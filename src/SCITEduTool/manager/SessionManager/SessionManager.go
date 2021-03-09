@@ -1,112 +1,242 @@
 package SessionManager
 
 import (
+	"SCITEduTool/unit/RSAStaticUnit"
 	"SCITEduTool/unit/SQLStaticUnit"
 	"SCITEduTool/unit/StdOutUnit"
+	"database/sql"
 	"time"
 )
 
 type userSessionItem struct {
-	Session string
-	Expired int64
+	Session   string
+	Expired   int64
 	Effective int
 }
 
 type SessionItem struct {
-	Session string
-	Exist bool
-	Expired bool
+	Session   string
+	Identify  int
+	Exist     bool
+	Expired   bool
 	Effective bool
 }
 
 func Get(username string) (SessionItem, StdOutUnit.MessagedError) {
-	tx, err := SQLStaticUnit.NewTransaction()
+	exist, errMessage := CheckUserExist(username, "user_token")
+	if errMessage.HasInfo {
+		return SessionItem{}, errMessage
+	}
+	if !exist {
+		return SessionItem{}, StdOutUnit.GetEmptyErrorMessage()
+	}
+	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Warn.String(username, err.Error())
 		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	rows, err := tx.Query("select `u_session`,`u_session_expired`,`u_token_effective` from `user_info` where `u_id`=?",
-		username)
+	state, err := tx.Prepare("select `u_session`,`u_session_expired`,`u_token_effective` from `user_token` where `u_id`=?")
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Warn.String(username, err.Error())
 		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	var items []userSessionItem
-	for rows.Next() {
-		var item userSessionItem
-		//err := rows.Scan(&item.Session, &item.Expired, &item.Effective)
-		err := rows.Scan(&item)
-		if err != nil {
-			StdOutUnit.Error.String(username, err.Error())
+	rows := state.QueryRow(username)
+	var item userSessionItem
+	err = rows.Scan(&item.Session, &item.Expired, &item.Effective)
+	//err := rows.Scan(&item)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return SessionItem{}, StdOutUnit.GetEmptyErrorMessage()
+		} else {
+			_ = tx.Rollback()
+			StdOutUnit.Warn.String(username, err.Error())
 			return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
-		items = append(items, item)
 	}
 	tx.Commit()
-	if len(items) > 0 {
-		item := items[0]
+	tx, err = SQLStaticUnit.Maria.Begin()
+	if err != nil {
+		StdOutUnit.Warn.String(username, err.Error())
+		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	state, err = tx.Prepare("select `u_identify` from `user_info` where `u_id`=?")
+	if err != nil {
+		StdOutUnit.Warn.String(username, err.Error())
+		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	rows = state.QueryRow(username)
+	identify := -1
+	err = rows.Scan(&identify)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return SessionItem{}, StdOutUnit.GetEmptyErrorMessage()
+		} else {
+			_ = tx.Rollback()
+			StdOutUnit.Warn.String(username, err.Error())
+			return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		}
+	}
+	tx.Commit()
+	if identify < 0 {
+		StdOutUnit.Warn.String(username, "用户身份获取失败")
+		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	if item.Session != "" {
 		return SessionItem{
-			Session: item.Session,
-			Exist: true,
+			Session:   item.Session,
+			Identify:  identify,
+			Exist:     true,
 			Effective: item.Effective == 1,
-			Expired: item.Expired < time.Now().Unix(),
+			Expired:   item.Expired < time.Now().Unix(),
 		}, StdOutUnit.GetEmptyErrorMessage()
 	} else {
-		return SessionItem {
+		return SessionItem{
 			Exist: false,
 		}, StdOutUnit.GetEmptyErrorMessage()
 	}
 }
 
-func Update(username string, password string, session string) (bool, StdOutUnit.MessagedError) {
-	tx, err := SQLStaticUnit.NewTransaction()
+func Update(username string, password string, session string, identify int) StdOutUnit.MessagedError {
+	exist, errMessage := CheckUserExist(username, "user_token")
+	if errMessage.HasInfo {
+		return errMessage
+	}
+	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
-		return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		StdOutUnit.Warn.String(username, err.Error())
+		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	rows, err := tx.Query("select `u_id` from `user_info` where `u_id`=`?`",
-		username)
+	var state *sql.Stmt
+	if !exist {
+		state, err = tx.Prepare("insert into `user_token` (`u_id`, `u_password` ,`u_session`, `u_session_expired`, `u_token_effective`) values (?, ?, ?, ?, 1)")
+	} else {
+		state, err = tx.Prepare("update `user_token` set `u_session`=?, `u_session_expired`=?, `u_token_effective`=1, `u_password`=? where `u_id`=?")
+	}
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
-		return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		StdOutUnit.Warn.String(username, err.Error())
+		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	var ids []string
-	for rows.Next() {
-		var id string
-		//err := rows.Scan(&item.Session, &item.Expired, &item.Effective)
-		err := rows.Scan(&id)
-		if err != nil {
-			StdOutUnit.Error.String(username, err.Error())
-			return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-		ids = append(ids, id)
+	if !exist {
+		_, err = state.Exec(username, password, session, time.Now().Unix()+1800)
+	} else {
+		_, err = state.Exec(session, time.Now().Unix()+1800, password, username)
 	}
-	tx.Commit()
-	if len(ids) == 0 {
-		tx, err := SQLStaticUnit.NewTransaction()
-		if err != nil {
-			StdOutUnit.Error.String(username, err.Error())
-			return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-		_, err = tx.Exec("insert into `user_info` (`u_id`, `u_password` ,`u_session`, `u_session_expired`, `u_token_effective`) values (`?`, `?`, `?`, `?`, `1`)",
-			username, password, session, time.Now().Unix() + 1800)
+	if err == nil {
 		tx.Commit()
-		if err != nil {
+		if !exist {
 			StdOutUnit.Verbose.String(username, "向数据库插入新 ASP.NET_SessionId 成功")
-			return true, StdOutUnit.GetEmptyErrorMessage()
 		} else {
-			StdOutUnit.Error.String(username, err.Error())
-			return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+			StdOutUnit.Verbose.String(username, "向数据库更新 ASP.NET_SessionId 成功")
 		}
 	} else {
-		_, err := tx.Exec("update `user_info` set `u_session`=`?`, `u_session_expired`=`?`, `u_token_effective`=`1`, `u_password`=?",
-			session, time.Now().Unix() + 1800, password)
+		_ = tx.Rollback()
+		StdOutUnit.Warn.String(username, err.Error())
+		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+
+	exist, errMessage = CheckUserExist(username, "user_info")
+	if errMessage.HasInfo {
+		return errMessage
+	}
+	tx, err = SQLStaticUnit.Maria.Begin()
+	if err != nil {
+		StdOutUnit.Warn.String(username, err.Error())
+		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	if !exist {
+		state, err = tx.Prepare("insert into `user_info` (`u_id`, `u_identify`, `u_info_expired`) values (?, ?, 0)")
+	} else {
+		state, err = tx.Prepare("update `user_info` set `u_identify`=? where `u_id`=?")
+	}
+	if err != nil {
+		StdOutUnit.Warn.String(username, err.Error())
+		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	if !exist {
+		_, err = state.Exec(username, identify)
+	} else {
+		_, err = state.Exec(identify, username)
+	}
+	if err == nil {
 		tx.Commit()
-		if err != nil {
-			StdOutUnit.Verbose.String(username, "向数据库更新 ASP.NET_SessionId 成功")
-			return true, StdOutUnit.GetEmptyErrorMessage()
+		if !exist {
+			StdOutUnit.Verbose.String(username, "向数据库插入新用户身份成功")
 		} else {
-			return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+			StdOutUnit.Verbose.String(username, "向数据库更新用户身份成功")
+		}
+		return StdOutUnit.GetEmptyErrorMessage()
+	} else {
+		_ = tx.Rollback()
+		StdOutUnit.Warn.String(username, err.Error())
+		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+}
+
+func GetUserPassword(username string, password string) (string, StdOutUnit.MessagedError) {
+	pass := password
+	if pass == "" {
+		tx, err := SQLStaticUnit.Maria.Begin()
+		if err != nil {
+			StdOutUnit.Warn.String(username, err.Error())
+			return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		}
+		var state *sql.Stmt
+		state, err = tx.Prepare("select `u_password` from `user_token` where `u_id`=?")
+		if err != nil {
+			StdOutUnit.Warn.String(username, err.Error())
+			return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		}
+		rows := state.QueryRow(username)
+		err = rows.Scan(&pass)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return "", StdOutUnit.GetEmptyErrorMessage()
+			} else {
+				_ = tx.Rollback()
+				StdOutUnit.Warn.String(username, err.Error())
+				return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+			}
+		}
+		tx.Commit()
+		if pass == "" {
+			return "", StdOutUnit.GetEmptyErrorMessage()
 		}
 	}
+	var errMessage StdOutUnit.MessagedError
+	pass, errMessage = RSAStaticUnit.DecodePublicEncode(pass)
+	if errMessage.HasInfo {
+		return "", errMessage
+	}
+	if len(pass) <= 8 {
+		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	return pass[8:], StdOutUnit.GetEmptyErrorMessage()
+}
+
+func CheckUserExist(username string, table string) (bool, StdOutUnit.MessagedError) {
+	tx, err := SQLStaticUnit.Maria.Begin()
+	if err != nil {
+		StdOutUnit.Warn.String(username, err.Error())
+		return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	var state *sql.Stmt
+	state, err = tx.Prepare("select `u_id` from `" + table + "` where `u_id`=?")
+	if err != nil {
+		StdOutUnit.Warn.String(username, err.Error())
+		return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	rows := state.QueryRow(username)
+	id := ""
+	err = rows.Scan(&id)
+	if err == nil {
+		tx.Commit()
+		return id != "", StdOutUnit.GetEmptyErrorMessage()
+	}
+	if err == sql.ErrNoRows {
+		StdOutUnit.Warn.String(username, err.Error())
+		return false, StdOutUnit.GetEmptyErrorMessage()
+	}
+	_ = tx.Rollback()
+	StdOutUnit.Warn.String(username, err.Error())
+	return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 }

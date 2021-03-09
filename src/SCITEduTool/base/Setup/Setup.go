@@ -3,8 +3,9 @@ package Setup
 import (
 	"SCITEduTool/api"
 	"SCITEduTool/unit/SQLStaticUnit"
-	"log"
+	"SCITEduTool/unit/StdOutUnit"
 	"net/http"
+	"os"
 )
 
 func Do() {
@@ -24,6 +25,7 @@ func registerApi(pattern string, handler func(http.ResponseWriter, *http.Request
 func startService(addr string) {
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
-		log.Fatal(err)
+		StdOutUnit.Assert.String("", err.Error())
+		os.Exit(0)
 	}
 }

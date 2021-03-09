@@ -17,11 +17,11 @@ const (
 	dbName   = "scit_edu_tool"
 )
 
-var maria *sql.DB
+var Maria *sql.DB
 
 func InitSQL() {
 	var err error
-	maria, err = sql.Open("mysql", strings.Join([]string{
+	Maria, err = sql.Open("mysql", strings.Join([]string{
 		userName, ":", password,
 		"@tcp(", ip, ":", port, ")/",
 		dbName, "?charset=utf8",
@@ -30,17 +30,9 @@ func InitSQL() {
 		StdOutUnit.Assert.String("", err.Error())
 		os.Exit(0)
 	}
-	err = maria.Ping()
+	err = Maria.Ping()
 	if err != nil {
 		StdOutUnit.Assert.String("", err.Error())
 		os.Exit(0)
 	}
-}
-
-func NewTransaction() (*sql.Tx, error) {
-	if maria == nil {
-		StdOutUnit.Assert.String("", "数据库未链接")
-		os.Exit(0)
-	}
-	return maria.Begin()
 }
