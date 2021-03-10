@@ -8,6 +8,9 @@ import (
 )
 
 func InsertParameter(request *http.Request, parameter map[string]string) (map[string]string, StdOutUnit.MessagedError) {
+	if parameter == nil {
+		parameter = make(map[string]string)
+	}
 	if !LocalDebug.IsDebug() {
 		parameter["ts"] = ""
 		parameter["sign"] = ""
@@ -20,7 +23,6 @@ func InsertParameter(request *http.Request, parameter map[string]string) (map[st
 		parameterKeys = append(parameterKeys, key)
 	}
 	sort.Strings(parameterKeys)
-
 	for _, key := range parameterKeys {
 		param := getParameter(request, key)
 		if param != "" {

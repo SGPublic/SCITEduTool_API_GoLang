@@ -18,13 +18,15 @@ func Get(username string) (InfoManager.UserInfo, StdOutUnit.MessagedError) {
 		return InfoManager.UserInfo{}, errMessage
 	}
 	if !info.Exist {
-		StdOutUnit.Info.String(username, "用户名称不存在")
-		return InfoManager.UserInfo{}, StdOutUnit.GetEmptyErrorMessage()
+		StdOutUnit.Info.String(username, "用户信息不存在")
+		goto refresh
 	}
 	if !info.Expired {
 		return info, StdOutUnit.GetEmptyErrorMessage()
 	}
-	StdOutUnit.Info.String(username, "用户基本名称过期")
+	StdOutUnit.Info.String(username, "用户基本信息过期")
+
+refresh:
 	session, identify, errMessage := SessionHelper.Get(username, "")
 	if errMessage.HasInfo {
 		return InfoManager.UserInfo{}, errMessage
@@ -54,11 +56,13 @@ func studentInfo(username string, session string) (InfoManager.UserInfo, StdOutU
 			return http.ErrUseLastResponse
 		},
 	}
-	req, _ := http.NewRequest("GET", "http://218.6.163.93:8081/xsgrxx.aspx?xh="+username, nil)
+	url := "http://218.6.163.93:8081/xsgrxx.aspx?xh=" + username
+	req, _ := http.NewRequest("GET", url, nil)
 	req.AddCookie(&http.Cookie{Name: "ASP.NET_SessionId", Value: session})
+	req.Header.Add("Referer", url)
 	resp, err := client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "网络请求失败", err)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	body, err := ioutil.ReadAll(resp.Body)
@@ -66,27 +70,27 @@ func studentInfo(username string, session string) (InfoManager.UserInfo, StdOutU
 	r, _ := regexp.Compile("__VIEWSTATE\" value=\"(.*?)\"")
 	viewState := r.FindString(string(body))
 	if viewState == "" {
-		StdOutUnit.Error.String(username, "未发现 __VIEWSTATE")
+		StdOutUnit.Error.String(username, "未发现 __VIEWSTATE", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
 	r, _ = regexp.Compile("lbl_dqszj\">(.*?)<")
 	grade_pre := r.FindString(string(body))
 	if grade_pre == "" {
-		StdOutUnit.Error.String(username, "年级名称获取失败")
+		StdOutUnit.Error.String(username, "年级名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	grade_pre = grade_pre[11 : len(grade_pre)-1]
 	grade, err := strconv.Atoi(grade_pre)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "年级ID解析失败", err)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
-	r, _ = regexp.Compile("xm\">(.*?)<")
+	r, _ = regexp.Compile("\"xm\">(.*?)<")
 	name := r.FindString(string(body))
 	if name == "" {
-		StdOutUnit.Error.String(username, "姓名名称获取失败")
+		StdOutUnit.Error.String(username, "姓名名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	name = name[5 : len(name)-1]
@@ -94,44 +98,46 @@ func studentInfo(username string, session string) (InfoManager.UserInfo, StdOutU
 	r, _ = regexp.Compile("lbl_xzb\">(.*?)<")
 	lbl_xzb := r.FindString(string(body))
 	if lbl_xzb == "" {
-		StdOutUnit.Error.String(username, "班级名称获取失败")
+		StdOutUnit.Error.String(username, "班级名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	lbl_xzb = lbl_xzb[9 : len(lbl_xzb)-1]
 	r, _ = regexp.Compile("(\\d+)\\.?(\\d+)班")
 	class_pre := r.FindString(string(body))
 	if class_pre == "" {
-		StdOutUnit.Error.String(username, "班级ID获取失败")
+		StdOutUnit.Error.String(username, "班级ID获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	class, err := strconv.Atoi(strings.ReplaceAll(class_pre, "班", ""))
 	if err != nil {
-		StdOutUnit.Error.String(username, "班级ID解析失败")
+		StdOutUnit.Error.String(username, "班级ID解析失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
 	r, _ = regexp.Compile("lbl_xy\">(.*?)<")
 	lbl_xy := r.FindString(string(body))
 	if lbl_xy == "" {
-		StdOutUnit.Error.String(username, "学院名称获取失败")
+		StdOutUnit.Error.String(username, "学院名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	lbl_xy = lbl_xy[7 : len(lbl_xy)-1]
+	lbl_xy = lbl_xy[8 : len(lbl_xy)-1]
 
 	r, _ = regexp.Compile("lbl_zymc\">(.*?)<")
 	lbl_zymc_pre := r.FindString(string(body))
 	if lbl_zymc_pre == "" {
-		StdOutUnit.Error.String(username, "专业名称获取失败")
+		StdOutUnit.Error.String(username, "专业名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	lbl_zymc_pre = lbl_zymc_pre[7 : len(lbl_zymc_pre)-1]
+	lbl_zymc_pre = lbl_zymc_pre[10 : len(lbl_zymc_pre)-1]
 	lbl_zymc := strings.ReplaceAll(lbl_zymc_pre, "（", "(")
 
-	req, _ = http.NewRequest("GET", "http://218.6.163.93:8081/tjkbcx.aspx?xh="+username, nil)
+	url = "http://218.6.163.93:8081/tjkbcx.aspx?xh=" + username
+	req, _ = http.NewRequest("GET", url, nil)
 	req.AddCookie(&http.Cookie{Name: "ASP.NET_SessionId", Value: session})
+	req.Header.Add("Referer", url)
 	resp, err = client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "网络请求失败", err)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	body, err = ioutil.ReadAll(resp.Body)
@@ -152,23 +158,25 @@ func studentInfo(username string, session string) (InfoManager.UserInfo, StdOutU
 		r, _ = regexp.Compile("value=\"(.*?)\">" + lbl_xy)
 		lbl_xy_id_pre := r.FindString(string(body))
 		if lbl_xy_id_pre == "" {
-			StdOutUnit.Error.String(username, "学院ID获取失败")
+			StdOutUnit.Error.String(username, "学院ID获取失败", nil)
 			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
-		lbl_xy_id, err = strconv.Atoi(lbl_xy_id_pre[7 : len(lbl_xy_id_pre)-len(lbl_xy)-1])
+		lbl_xy_id, err = strconv.Atoi(lbl_xy_id_pre[7 : len(lbl_xy_id_pre)-len(lbl_xy)-2])
 		if err != nil {
-			StdOutUnit.Debug.String(username, "学院ID解析失败")
+			StdOutUnit.Debug.String(username, "学院ID解析失败", err)
+			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
 
 		r, _ = regexp.Compile("value=\"(.*?)\">" + lbl_zymc_pre)
 		lbl_zymc_id_pre := r.FindString(string(body))
 		if lbl_zymc_id_pre == "" {
-			StdOutUnit.Error.String(username, "专业ID获取失败")
+			StdOutUnit.Error.String(username, "专业ID获取失败", nil)
 			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
-		lbl_zymc_id, err = strconv.Atoi(lbl_zymc_id_pre[7 : len(lbl_zymc_id_pre)-len(lbl_zymc_pre)-1])
+		lbl_zymc_id, err = strconv.Atoi(lbl_zymc_id_pre[7 : len(lbl_zymc_id_pre)-len(lbl_zymc_pre)-2])
 		if err != nil {
-			StdOutUnit.Debug.String(username, "专业ID解析失败")
+			StdOutUnit.Debug.String(username, "专业ID解析失败", err)
+			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
 	}
 	if lbl_zymc_id < 0 || lbl_xy_id < 0 {
@@ -176,7 +184,7 @@ func studentInfo(username string, session string) (InfoManager.UserInfo, StdOutU
 	}
 	ChartManager.WriteFacultyName(lbl_xy_id, lbl_xy)
 	ChartManager.WriteSpecialtyName(lbl_xy_id, lbl_zymc_id, lbl_zymc)
-	ChartManager.WriteClassName(lbl_xy_id, lbl_zymc_id, class, lbl_zymc)
+	ChartManager.WriteClassName(lbl_xy_id, lbl_zymc_id, class, lbl_xzb)
 	InfoManager.Update(username, name, lbl_xy_id, lbl_zymc_id, class, grade)
 	return InfoManager.UserInfo{
 		Name:      name,

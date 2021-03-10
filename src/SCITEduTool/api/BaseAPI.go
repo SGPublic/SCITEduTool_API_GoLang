@@ -30,7 +30,7 @@ func SetupAPI(w http.ResponseWriter, r *http.Request, parameterGet map[string]st
 	ts, intError := strconv.ParseInt(parameter["ts"], 10, 64)
 	if !LocalDebug.IsDebug() {
 		if intError != nil {
-			StdOutUnit.Error.String("", intError.Error())
+			StdOutUnit.Error.String("", "ts参数解析失败", intError)
 			return BaseAPI{}, StdOutUnit.GetErrorMessage(-403, "请求错误")
 		}
 		timeNow := time.Now().Unix() - ts

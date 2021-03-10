@@ -11,7 +11,7 @@
  Target Server Version : 50568
  File Encoding         : 65001
 
- Date: 07/03/2021 12:28:46
+ Date: 09/03/2021 22:09:39
 */
 
 SET NAMES utf8mb4;
@@ -111,8 +111,7 @@ CREATE TABLE `student_achieve`  (
 -- ----------------------------
 DROP TABLE IF EXISTS `user_info`;
 CREATE TABLE `user_info`  (
-  `u_id` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `u_password` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `u_id` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '',
   `u_name` tinytext CHARACTER SET utf8 COLLATE utf8_general_ci NULL,
   `u_identify` tinyint(2) NOT NULL DEFAULT 0,
   `u_level` tinyint(2) NOT NULL DEFAULT 0,
@@ -120,11 +119,23 @@ CREATE TABLE `user_info`  (
   `u_specialty` smallint(6) NULL DEFAULT NULL,
   `u_class` tinyint(4) NULL DEFAULT NULL,
   `u_grade` smallint(6) NULL DEFAULT NULL,
-  `u_session` tinytext CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `u_session_expired` int(10) UNSIGNED NOT NULL,
-  `u_token_effective` tinyint(1) NOT NULL,
+  `u_info_expired` int(11) NOT NULL,
   PRIMARY KEY (`u_id`) USING BTREE,
   UNIQUE INDEX `user_info`(`u_id`, `u_identify`, `u_faculty`, `u_specialty`, `u_class`, `u_grade`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Compact;
+
+-- ----------------------------
+-- Table structure for user_token
+-- ----------------------------
+DROP TABLE IF EXISTS `user_token`;
+CREATE TABLE `user_token`  (
+  `u_id` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `u_password` varchar(600) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '',
+  `u_session` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '',
+  `u_session_expired` int(11) NOT NULL,
+  `u_token_effective` tinyint(1) NOT NULL,
+  PRIMARY KEY (`u_id`) USING BTREE,
+  UNIQUE INDEX `user_token`(`u_id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Compact;
 
 SET FOREIGN_KEY_CHECKS = 1;

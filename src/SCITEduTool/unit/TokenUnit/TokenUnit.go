@@ -1,25 +1,31 @@
 package TokenUnit
 
 import (
-	"SCITEduTool/manager/SessionManager"
-	"SCITEduTool/unit/RSAStaticUnit"
-	"SCITEduTool/unit/StdOutUnit"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"SCITEduTool/manager/SessionManager"
+	"SCITEduTool/unit/RSAStaticUnit"
+	"SCITEduTool/unit/StdOutUnit"
 )
 
-const (
-	access  int64 = 2592000   // 一个月 30 * 24 * 3600
-	refresh int64 = 124416000 // 四年 30 * 24 * 3600 * 12 * 4
-)
+type TokenConfig struct {
+	TokenKey       string `json:"token_key"`
+	TokenSecret    string `json:"token_secret"`
+	AccessExpired  string `json:"access_expired"`
+	RefreshExpired string `json:"refresh_expired"`
+}
 
 var tokenKey string
 var tokenSecret string
+var access int64
+var refresh int64
 
 type Token struct {
 	AccessToken  string
@@ -39,9 +45,28 @@ type TokenBody struct {
 	Key      string
 }
 
-func Setup(key string, secret string) {
-	tokenKey = key
-	tokenSecret = secret
+func InitKey(tokenConf TokenConfig) {
+	var err error
+	if tokenConf.TokenKey == "" || tokenConf.TokenSecret == "" ||
+		strings.Contains(tokenConf.TokenKey, "//") ||
+		strings.Contains(tokenConf.TokenSecret, "//") {
+		StdOutUnit.Assert.String("", "token_key或token_secret为空或格式不正确", nil)
+		os.Exit(0)
+	}
+	tokenKey = tokenConf.TokenKey
+	tokenSecret = tokenConf.TokenSecret
+	access, err = strconv.ParseInt(tokenConf.AccessExpired, 10, 64)
+	if err != nil {
+		StdOutUnit.Warn.String("", "access_token过期时间解析失败，将使用默认值", err)
+		access = 2592000
+	}
+	refresh, err = strconv.ParseInt(tokenConf.RefreshExpired, 10, 64)
+	if err != nil {
+		StdOutUnit.Warn.String("", "refresh_token过期时间解析失败，将使用默认值", err)
+		refresh = 124416000
+	} else {
+		StdOutUnit.Verbose.String("", "Token配置成功")
+	}
 }
 
 func Build(username string, password string) (Token, StdOutUnit.MessagedError) {
@@ -61,6 +86,10 @@ func Build(username string, password string) (Token, StdOutUnit.MessagedError) {
 	if err.HasInfo {
 		return Token{}, err
 	}
+	if len(passwordPre) <= 8 {
+		return Token{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	passwordPre = passwordPre[8:]
 
 	accessBodyPre, _ := json.Marshal(TokenBody{
 		Password: passwordPre,
@@ -103,7 +132,7 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 	}
 	headerPre, err := base64.StdEncoding.DecodeString(accessPre[1])
 	if err != nil {
-		StdOutUnit.Warn.String("", "token header解析错误")
+		StdOutUnit.Warn.String("", "token header解析错误", err)
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	header := strings.Split(strings.ReplaceAll(string(headerPre), "%", ""), "&")
@@ -112,16 +141,27 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	username = header[0]
-	password, message := SessionManager.GetUserPassword(username, "")
-	if message.HasInfo {
+	password, errMessage := SessionManager.GetUserPassword(username, "")
+	if errMessage.HasInfo {
+		return "", errMessage
+	}
+	password, errMessage = RSAStaticUnit.DecodePublicEncode(password)
+	if errMessage.HasInfo {
+		return "", errMessage
+	}
+	if len(password) <= 8 {
+		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	if errMessage.HasInfo {
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
+	password = password[8:]
 	if password == "" {
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	tokenCreateTime, err := strconv.ParseInt(header[1], 10, 64)
 	if err != nil {
-		StdOutUnit.Warn.String("", "token创建时间解析错误")
+		StdOutUnit.Warn.String("", "token创建时间解析错误", err)
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	if tokenCreateTime+access < time.Now().Unix() {

@@ -1,12 +1,10 @@
 package main
 
 import (
-	"SCITEduTool/base/Setup"
-	"SCITEduTool/unit/TokenUnit"
+	"SCITEduTool/base/Application"
 )
 
 func main() {
-	//TODO
-	TokenUnit.Setup("", "")
-	Setup.Do()
+	Application.SetupWithConfig()
+	Application.RegisterAPI()
 }

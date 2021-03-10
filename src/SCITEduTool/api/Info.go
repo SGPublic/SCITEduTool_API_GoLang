@@ -49,17 +49,18 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		err.OutMessage(w)
 		return
 	}
-	specialty, err := ChartManager.GetFacultyName(info.Specialty)
+	specialty, err := ChartManager.GetSpecialtyName(info.Faculty, info.Specialty)
 	if err.HasInfo {
 		err.OutMessage(w)
 		return
 	}
-	class, err := ChartManager.GetFacultyName(info.Class)
+	class, err := ChartManager.GetClassName(info.Faculty, info.Specialty, info.Class)
 	if err.HasInfo {
 		err.OutMessage(w)
 		return
 	}
 
+	StdOutUnit.Verbose.String(username, "用户获取基本信息成功")
 	StdOutUnit.OnObjectResult(w, InfoOut{
 		Code:    200,
 		Message: "success.",

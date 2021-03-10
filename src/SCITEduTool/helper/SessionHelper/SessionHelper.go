@@ -17,8 +17,7 @@ func Get(username string, password string) (string, int, StdOutUnit.MessagedErro
 		return "", 0, err
 	}
 	if !sessionExists.Exist {
-		StdOutUnit.Info.String(username, "用户 ASP.NET_SessionId 不存在")
-		return "", 0, StdOutUnit.GetEmptyErrorMessage()
+		goto getSession
 	}
 	if !sessionExists.Effective {
 		StdOutUnit.Info.String(username, "用户修改密码，登陆状态失效")
@@ -28,10 +27,8 @@ func Get(username string, password string) (string, int, StdOutUnit.MessagedErro
 		return sessionExists.Session, sessionExists.Identify, StdOutUnit.GetEmptyErrorMessage()
 	}
 	StdOutUnit.Info.String(username, "用户 ASP.NET_SessionId 过期")
-	password, err = SessionManager.GetUserPassword(username, password)
-	if err.HasInfo || password == "" {
-		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
+
+getSession:
 	session, identify, err := Refresh(username, password)
 	if !err.HasInfo {
 		return session, identify, StdOutUnit.GetEmptyErrorMessage()
@@ -44,6 +41,13 @@ func Get(username string, password string) (string, int, StdOutUnit.MessagedErro
 }
 
 func Refresh(username string, password string) (string, int, StdOutUnit.MessagedError) {
+	var errMessage StdOutUnit.MessagedError
+	if password == "" {
+		password, errMessage = SessionManager.GetUserPassword(username, "")
+		if errMessage.HasInfo {
+			return "", 0, errMessage
+		}
+	}
 	location, identify, errMessage := GetVerifyLocation(username, password)
 	if errMessage.HasInfo {
 		return "", 0, errMessage
@@ -56,7 +60,7 @@ func Refresh(username string, password string) (string, int, StdOutUnit.Messaged
 	req, _ := http.NewRequest("GET", location, nil)
 	resp, err := client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "网络请求失败", err)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	cookies := resp.Header.Values("Set-Cookie")
@@ -69,11 +73,11 @@ func Refresh(username string, password string) (string, int, StdOutUnit.Messaged
 		}
 	}
 	if session == "" {
-		StdOutUnit.Error.String(username, "ASP.NET_SessionId 获取失败")
+		StdOutUnit.Error.String(username, "ASP.NET_SessionId 获取失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	if len(session) <= 18 {
-		StdOutUnit.Error.String(username, "ASP.NET_SessionId 处理失败")
+		StdOutUnit.Error.String(username, "ASP.NET_SessionId 处理失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	session = session[18 : len(session)-1]
@@ -92,7 +96,7 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 	req, _ := http.NewRequest("GET", "http://218.6.163.95:18080/zfca/login", nil)
 	resp, err := client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "网络请求失败", err)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	cookies := resp.Header.Values("Set-Cookie")
@@ -105,11 +109,11 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 		}
 	}
 	if Jsessionid1 == "" {
-		StdOutUnit.Error.String(username, "JSESSIONID1 获取失败")
+		StdOutUnit.Error.String(username, "JSESSIONID1 获取失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-401, "账号或密码错误")
 	}
 	if len(Jsessionid1) <= 11 {
-		StdOutUnit.Error.String(username, "JSESSIONID1 处理失败")
+		StdOutUnit.Error.String(username, "JSESSIONID1 处理失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	Jsessionid1 = Jsessionid1[11 : len(Jsessionid1)-1]
@@ -119,7 +123,7 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 	r, _ = regexp.Compile("lt\" value=\"(.*?)\"")
 	lt := r.FindString(string(body))
 	if len(lt) <= 11 {
-		StdOutUnit.Error.String(username, "lt 获取失败")
+		StdOutUnit.Error.String(username, "lt 获取失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	lt = lt[11 : len(lt)-1]
@@ -144,16 +148,12 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 	form.Set("lt", lt)
 	form.Set("_eventId", "submit")
 	form.Set("submit1", "+")
-	req, err = http.NewRequest("POST", "http://218.6.163.95:18080/zfca/login;jsessionid="+
+	req, _ = http.NewRequest("POST", "http://218.6.163.95:18080/zfca/login;jsessionid="+
 		Jsessionid1, strings.NewReader(strings.TrimSpace(form.Encode())))
-	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
-		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err = client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "网络请求失败", err)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	cookies = resp.Header.Values("Set-Cookie")
@@ -170,20 +170,20 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 		return "", 0, StdOutUnit.GetErrorMessage(-401, "账号或密码错误")
 	}
 	if len(castgc) <= 7 {
-		StdOutUnit.Error.String(username, "CASTGC 获取失败")
+		StdOutUnit.Error.String(username, "CASTGC 获取失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	castgc = castgc[7 : len(castgc)-1]
 	location := resp.Header.Values("Location")
 	if len(location) != 1 {
-		StdOutUnit.Error.String(username, "第一次跳转失败")
+		StdOutUnit.Error.String(username, "第一次跳转失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
 	req, _ = http.NewRequest("GET", location[0], nil)
 	resp, err = client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "请求失败创建", err)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	cookies = resp.Header.Values("Set-Cookie")
@@ -205,37 +205,29 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 
 	location = resp.Header.Values("Location")
 	if len(location) != 1 {
-		StdOutUnit.Error.String(username, "第二次跳转失败")
+		StdOutUnit.Error.String(username, "第二次跳转失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	req, err = http.NewRequest("GET", location[0], nil)
-	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
-		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
+	req, _ = http.NewRequest("GET", location[0], nil)
 	req.AddCookie(&http.Cookie{Name: "JSESSIONID", Value: Jsessionid1})
 	req.AddCookie(&http.Cookie{Name: "CASTGC", Value: castgc})
 	req.AddCookie(&http.Cookie{Name: "JSESSIONID", Value: Jsessionid2})
 	resp, err = client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "网络请求失败", err)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	location = resp.Header.Values("Location")
 	if len(location) != 1 {
-		StdOutUnit.Error.String(username, "第三次跳转失败")
+		StdOutUnit.Error.String(username, "第三次跳转失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
-	req, err = http.NewRequest("GET", location[0], nil)
-	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
-		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
+	req, _ = http.NewRequest("GET", location[0], nil)
 	req.AddCookie(&http.Cookie{Name: "JSESSIONID", Value: Jsessionid2})
 	resp, err = client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, err.Error())
+		StdOutUnit.Error.String(username, "网络请求失败", err)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	body, err = ioutil.ReadAll(resp.Body)
@@ -251,7 +243,7 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 		identity = 1
 		break
 	default:
-		StdOutUnit.Error.String(username, "identity 获取失败")
+		StdOutUnit.Error.String(username, "identity 获取失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
@@ -260,22 +252,18 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 		"http://218.6.163.95:18080/zfca/login?yhlx=" + identities[identity] +
 			"&login=0122579031373493708&url=xs_main.aspx",
 	}
-	req, err = http.NewRequest("GET", location[0], nil)
-	if err != nil {
-		StdOutUnit.Error.String(username, ""+err.Error())
-		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
+	req, _ = http.NewRequest("GET", location[0], nil)
 	req.AddCookie(&http.Cookie{Name: "JSESSIONID", Value: Jsessionid1})
 	req.AddCookie(&http.Cookie{Name: "CASTGC", Value: castgc})
 	req.AddCookie(&http.Cookie{Name: "JSESSIONID", Value: Jsessionid2})
 	resp, err = client.Do(req)
 	if err != nil {
-		StdOutUnit.Error.String(username, ""+err.Error())
+		StdOutUnit.Error.String(username, "网络请求失败", err)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	location = resp.Header.Values("Location")
 	if len(location) != 1 {
-		StdOutUnit.Error.String(username, "跳转链接获取失败")
+		StdOutUnit.Error.String(username, "跳转链接获取失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 

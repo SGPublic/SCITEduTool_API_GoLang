@@ -1,7 +1,6 @@
 package SessionManager
 
 import (
-	"SCITEduTool/unit/RSAStaticUnit"
 	"SCITEduTool/unit/SQLStaticUnit"
 	"SCITEduTool/unit/StdOutUnit"
 	"database/sql"
@@ -23,21 +22,15 @@ type SessionItem struct {
 }
 
 func Get(username string) (SessionItem, StdOutUnit.MessagedError) {
-	exist, errMessage := CheckUserExist(username, "user_token")
-	if errMessage.HasInfo {
-		return SessionItem{}, errMessage
-	}
-	if !exist {
-		return SessionItem{}, StdOutUnit.GetEmptyErrorMessage()
-	}
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		StdOutUnit.Warn.String(username, "数据库开始事务失败", err)
 		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	state, err := tx.Prepare("select `u_session`,`u_session_expired`,`u_token_effective` from `user_token` where `u_id`=?")
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		_ = tx.Rollback()
+		StdOutUnit.Warn.String(username, "数据库准备SQL指令失败", err)
 		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	rows := state.QueryRow(username)
@@ -46,22 +39,25 @@ func Get(username string) (SessionItem, StdOutUnit.MessagedError) {
 	//err := rows.Scan(&item)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			tx.Commit()
+			StdOutUnit.Info.String(username, "用户不存在")
 			return SessionItem{}, StdOutUnit.GetEmptyErrorMessage()
 		} else {
 			_ = tx.Rollback()
-			StdOutUnit.Warn.String(username, err.Error())
+			StdOutUnit.Warn.String(username, "数据库SQL指令执行失败", err)
 			return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
 	}
 	tx.Commit()
 	tx, err = SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		StdOutUnit.Warn.String(username, "数据库开始事务失败", err)
 		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	state, err = tx.Prepare("select `u_identify` from `user_info` where `u_id`=?")
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		_ = tx.Rollback()
+		StdOutUnit.Warn.String(username, "数据库准备SQL指令失败", err)
 		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	rows = state.QueryRow(username)
@@ -69,16 +65,18 @@ func Get(username string) (SessionItem, StdOutUnit.MessagedError) {
 	err = rows.Scan(&identify)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			tx.Commit()
+			StdOutUnit.Info.String(username, "用户身份未知")
 			return SessionItem{}, StdOutUnit.GetEmptyErrorMessage()
 		} else {
 			_ = tx.Rollback()
-			StdOutUnit.Warn.String(username, err.Error())
+			StdOutUnit.Warn.String(username, "数据库SQL指令执行失败", err)
 			return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
 	}
 	tx.Commit()
 	if identify < 0 {
-		StdOutUnit.Warn.String(username, "用户身份获取失败")
+		StdOutUnit.Warn.String(username, "用户身份获取失败", nil)
 		return SessionItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	if item.Session != "" {
@@ -103,7 +101,7 @@ func Update(username string, password string, session string, identify int) StdO
 	}
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		StdOutUnit.Warn.String(username, "数据库开始事务失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	var state *sql.Stmt
@@ -113,7 +111,7 @@ func Update(username string, password string, session string, identify int) StdO
 		state, err = tx.Prepare("update `user_token` set `u_session`=?, `u_session_expired`=?, `u_token_effective`=1, `u_password`=? where `u_id`=?")
 	}
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		StdOutUnit.Warn.String(username, "数据库准备SQL指令失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	if !exist {
@@ -130,7 +128,7 @@ func Update(username string, password string, session string, identify int) StdO
 		}
 	} else {
 		_ = tx.Rollback()
-		StdOutUnit.Warn.String(username, err.Error())
+		StdOutUnit.Warn.String(username, "数据库SQL指令执行失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
@@ -140,7 +138,7 @@ func Update(username string, password string, session string, identify int) StdO
 	}
 	tx, err = SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		StdOutUnit.Warn.String(username, "数据库开始事务失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	if !exist {
@@ -149,7 +147,8 @@ func Update(username string, password string, session string, identify int) StdO
 		state, err = tx.Prepare("update `user_info` set `u_identify`=? where `u_id`=?")
 	}
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		_ = tx.Rollback()
+		StdOutUnit.Warn.String(username, "数据库准备SQL指令失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	if !exist {
@@ -167,7 +166,7 @@ func Update(username string, password string, session string, identify int) StdO
 		return StdOutUnit.GetEmptyErrorMessage()
 	} else {
 		_ = tx.Rollback()
-		StdOutUnit.Warn.String(username, err.Error())
+		StdOutUnit.Warn.String(username, "数据库查询失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 }
@@ -177,23 +176,25 @@ func GetUserPassword(username string, password string) (string, StdOutUnit.Messa
 	if pass == "" {
 		tx, err := SQLStaticUnit.Maria.Begin()
 		if err != nil {
-			StdOutUnit.Warn.String(username, err.Error())
+			StdOutUnit.Warn.String(username, "数据库开始事务失败", err)
 			return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
 		var state *sql.Stmt
 		state, err = tx.Prepare("select `u_password` from `user_token` where `u_id`=?")
 		if err != nil {
-			StdOutUnit.Warn.String(username, err.Error())
+			_ = tx.Rollback()
+			StdOutUnit.Warn.String(username, "数据库准备SQL指令失败", err)
 			return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
 		rows := state.QueryRow(username)
 		err = rows.Scan(&pass)
 		if err != nil {
 			if err == sql.ErrNoRows {
+				tx.Commit()
 				return "", StdOutUnit.GetEmptyErrorMessage()
 			} else {
 				_ = tx.Rollback()
-				StdOutUnit.Warn.String(username, err.Error())
+				StdOutUnit.Warn.String(username, "数据库SQL指令执行失败", err)
 				return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 			}
 		}
@@ -202,27 +203,20 @@ func GetUserPassword(username string, password string) (string, StdOutUnit.Messa
 			return "", StdOutUnit.GetEmptyErrorMessage()
 		}
 	}
-	var errMessage StdOutUnit.MessagedError
-	pass, errMessage = RSAStaticUnit.DecodePublicEncode(pass)
-	if errMessage.HasInfo {
-		return "", errMessage
-	}
-	if len(pass) <= 8 {
-		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
-	return pass[8:], StdOutUnit.GetEmptyErrorMessage()
+	return pass, StdOutUnit.GetEmptyErrorMessage()
 }
 
 func CheckUserExist(username string, table string) (bool, StdOutUnit.MessagedError) {
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		StdOutUnit.Warn.String(username, "数据库开始事务失败", err)
 		return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	var state *sql.Stmt
 	state, err = tx.Prepare("select `u_id` from `" + table + "` where `u_id`=?")
 	if err != nil {
-		StdOutUnit.Warn.String(username, err.Error())
+		_ = tx.Rollback()
+		StdOutUnit.Warn.String(username, "数据库准备SQL指令失败", err)
 		return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	rows := state.QueryRow(username)
@@ -233,10 +227,11 @@ func CheckUserExist(username string, table string) (bool, StdOutUnit.MessagedErr
 		return id != "", StdOutUnit.GetEmptyErrorMessage()
 	}
 	if err == sql.ErrNoRows {
-		StdOutUnit.Warn.String(username, err.Error())
+		tx.Commit()
 		return false, StdOutUnit.GetEmptyErrorMessage()
+	} else {
+		_ = tx.Rollback()
+		StdOutUnit.Warn.String(username, "数据库SQL指令执行失败", err)
 	}
-	_ = tx.Rollback()
-	StdOutUnit.Warn.String(username, err.Error())
 	return false, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 }
