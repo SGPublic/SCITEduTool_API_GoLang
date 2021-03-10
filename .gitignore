@@ -1,5 +1,6 @@
 /bin
 /pkg
-/.idea
+/.idea/runConfigurations/Build_for_Linux.xml
+/.idea/runConfigurations/Test_for_Windows.xml
 /src/launcher
 /src/test
