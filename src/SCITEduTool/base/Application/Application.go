@@ -1,7 +1,6 @@
 package Application
 
 import (
-	"SCITEduTool/api"
 	"SCITEduTool/unit/RSAStaticUnit"
 	"SCITEduTool/unit/SQLStaticUnit"
 	"SCITEduTool/unit/StdOutUnit"
@@ -10,41 +9,15 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 )
 
-const (
-	basePattern = "/api"
-	addr        = ":8000"
-)
-
-func RegisterAPI() {
-	registerApi("/day", api.Day)
-	registerApi("/getKey", api.GetKey)
-	registerApi("/login", api.Login)
-	registerApi("/info", api.Info)
-	startService(addr)
-}
-
-func registerApi(pattern string, handler func(http.ResponseWriter, *http.Request)) {
-	http.HandleFunc(basePattern+pattern, handler)
-}
-
-func startService(addr string) {
-	err := http.ListenAndServe(addr, nil)
-	if err != nil {
-		StdOutUnit.Assert.String("", "服务启动失败", err)
-		os.Exit(0)
-	}
-}
-
 func SetupWithConfig() {
-	StdOutUnit.Verbose.String("", "工科助手API启动中")
+	StdOutUnit.Info("", "工科助手API启动中")
 	configDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
-		StdOutUnit.Assert.String("", "运行目录获取失败", err)
+		StdOutUnit.Assert("", "运行目录获取失败", err)
 		os.Exit(0)
 	}
 	configDir += "/config"
@@ -52,7 +25,7 @@ func SetupWithConfig() {
 	setupSQL(configDir)
 	setupToken(configDir)
 	setupPrivateKey(configDir)
-	StdOutUnit.Verbose.String("", "工科助手API配置读取完成，配置文件将在重启生效，祝您使用愉快~")
+	StdOutUnit.Info("", "工科助手API配置读取完成，配置文件将在重启生效，祝您使用愉快~")
 }
 
 func setupConfigDir(configDir string) {
@@ -63,12 +36,12 @@ func setupConfigDir(configDir string) {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(configDir, 0644)
 		if err == nil {
-			StdOutUnit.Verbose.String("", "配置目录创建成功")
+			StdOutUnit.Info("", "配置目录创建成功")
 			return
 		}
-		StdOutUnit.Assert.String("", "配置目录创建失败", err)
+		StdOutUnit.Assert("", "配置目录创建失败", err)
 	} else {
-		StdOutUnit.Assert.String("", "配置目录信息失败", err)
+		StdOutUnit.Assert("", "配置目录信息失败", err)
 	}
 	os.Exit(0)
 }
@@ -81,7 +54,7 @@ func setupSQL(configDir string) {
 	if err == nil {
 		file, err = os.OpenFile(path, os.O_RDONLY, 0644)
 		if err != nil {
-			StdOutUnit.Assert.String("", "SQL配置读取失败", err)
+			StdOutUnit.Assert("", "SQL配置读取失败", err)
 			goto exit
 		}
 		sqlConfigContent, err = ioutil.ReadAll(io.Reader(file))
@@ -89,7 +62,7 @@ func setupSQL(configDir string) {
 		sqlConf := SQLStaticUnit.SQLConfig{}
 		err = json.Unmarshal(sqlConfigContent, &sqlConf)
 		if err != nil {
-			StdOutUnit.Assert.String("", "SQL配置解析失败", err)
+			StdOutUnit.Assert("", "SQL配置解析失败", err)
 			goto exit
 		}
 		SQLStaticUnit.InitSQL(sqlConf)
@@ -106,15 +79,15 @@ func setupSQL(configDir string) {
 		sqlConfigContent, err = json.Marshal(sqlConf)
 		err = ioutil.WriteFile(path, sqlConfigContent, 0644)
 		if err == nil {
-			StdOutUnit.Assert.String("", "SQL配置文件不存在，已为您新建默认配置文件，请修改后重新启动", nil)
+			StdOutUnit.Assert("", "SQL配置文件不存在，已为您新建默认配置文件，请修改后重新启动", nil)
 		} else {
-			StdOutUnit.Assert.String("", "默认SQL配置文件创建失败", err)
+			StdOutUnit.Assert("", "默认SQL配置文件创建失败", err)
 		}
 		goto exit
 	} else {
-		StdOutUnit.Assert.String("", "配置目录信息失败", err)
+		StdOutUnit.Assert("", "配置目录信息失败", err)
 	}
-	StdOutUnit.Assert.String("", "SQL配置获取失败", err)
+	StdOutUnit.Assert("", "SQL配置获取失败", err)
 
 exit:
 	os.Exit(0)
@@ -128,7 +101,7 @@ func setupToken(configDir string) {
 	if err == nil {
 		file, err = os.OpenFile(path, os.O_RDONLY, 0644)
 		if err != nil {
-			StdOutUnit.Assert.String("", "Token配置读取失败", err)
+			StdOutUnit.Assert("", "Token配置读取失败", err)
 			goto exit
 		}
 		tokenConfigContent, err = ioutil.ReadAll(io.Reader(file))
@@ -136,7 +109,7 @@ func setupToken(configDir string) {
 		tokenConf := TokenUnit.TokenConfig{}
 		err = json.Unmarshal(tokenConfigContent, &tokenConf)
 		if err != nil {
-			StdOutUnit.Assert.String("", "Token配置解析失败", err)
+			StdOutUnit.Assert("", "Token配置解析失败", err)
 			goto exit
 		}
 		TokenUnit.InitKey(tokenConf)
@@ -156,15 +129,15 @@ func setupToken(configDir string) {
 		tokenConfigContent, err = json.Marshal(tokenConf)
 		err = ioutil.WriteFile(path, tokenConfigContent, 0644)
 		if err == nil {
-			StdOutUnit.Assert.String("", "Token配置文件不存在，已为您新建默认配置文件，请修改后重新启动", nil)
+			StdOutUnit.Assert("", "Token配置文件不存在，已为您新建默认配置文件，请修改后重新启动", nil)
 		} else {
-			StdOutUnit.Assert.String("", "默认Token配置文件创建失败", err)
+			StdOutUnit.Assert("", "默认Token配置文件创建失败", err)
 		}
 		goto exit
 	} else {
-		StdOutUnit.Assert.String("", "配置目录信息失败", err)
+		StdOutUnit.Assert("", "配置目录信息失败", err)
 	}
-	StdOutUnit.Assert.String("", "Token配置获取失败", err)
+	StdOutUnit.Assert("", "Token配置获取失败", err)
 
 exit:
 	os.Exit(0)
@@ -178,7 +151,7 @@ func setupPrivateKey(configDir string) {
 	if err == nil {
 		file, err = os.OpenFile(path, os.O_RDONLY, 0644)
 		if err != nil {
-			StdOutUnit.Assert.String("", "Token配置读取失败", err)
+			StdOutUnit.Assert("", "Token配置读取失败", err)
 			goto exit
 		}
 		keyConfigContent, err = ioutil.ReadAll(io.Reader(file))
@@ -186,7 +159,7 @@ func setupPrivateKey(configDir string) {
 		keyConf := RSAStaticUnit.PrivateKey{}
 		err = json.Unmarshal(keyConfigContent, &keyConf)
 		if err != nil {
-			StdOutUnit.Assert.String("", "Token配置解析失败", err)
+			StdOutUnit.Assert("", "Token配置解析失败", err)
 			goto exit
 		}
 		RSAStaticUnit.SetPrivateKey(keyConf)
@@ -200,15 +173,15 @@ func setupPrivateKey(configDir string) {
 		keyConfigContent, err = json.Marshal(tokenConf)
 		err = ioutil.WriteFile(path, keyConfigContent, 0644)
 		if err == nil {
-			StdOutUnit.Assert.String("", "Token配置文件不存在，已为您新建默认配置文件，请修改后重新启动", nil)
+			StdOutUnit.Assert("", "Token配置文件不存在，已为您新建默认配置文件，请修改后重新启动", nil)
 		} else {
-			StdOutUnit.Assert.String("", "默认Token配置文件创建失败", err)
+			StdOutUnit.Assert("", "默认Token配置文件创建失败", err)
 		}
 		goto exit
 	} else {
-		StdOutUnit.Assert.String("", "配置目录信息失败", err)
+		StdOutUnit.Assert("", "配置目录信息失败", err)
 	}
-	StdOutUnit.Assert.String("", "Token配置获取失败", err)
+	StdOutUnit.Assert("", "Token配置获取失败", err)
 
 exit:
 	os.Exit(0)

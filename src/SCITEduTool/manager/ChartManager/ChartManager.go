@@ -9,12 +9,12 @@ import (
 func GetFacultyName(fId int) (string, StdOutUnit.MessagedError) {
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库开始事务失败", err)
+		StdOutUnit.Warn("", "数据库开始事务失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	state, err := tx.Prepare("select `f_name` from `faculty_chart` where `f_id`=?")
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库准备SQL指令失败", err)
+		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	rows := state.QueryRow(fId)
@@ -28,7 +28,7 @@ func GetFacultyName(fId int) (string, StdOutUnit.MessagedError) {
 	if err == sql.ErrNoRows {
 		return "", StdOutUnit.GetEmptyErrorMessage()
 	} else {
-		StdOutUnit.Warn.String("", "数据库SQL指令执行失败", err)
+		StdOutUnit.Warn("", "数据库SQL指令执行失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 }
@@ -36,12 +36,12 @@ func GetFacultyName(fId int) (string, StdOutUnit.MessagedError) {
 func GetSpecialtyName(fId int, sId int) (string, StdOutUnit.MessagedError) {
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库开始事务失败", err)
+		StdOutUnit.Warn("", "数据库开始事务失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	state, err := tx.Prepare("select `s_name` from `specialty_chart` where `f_id`=? and `s_id`=?")
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库准备SQL指令失败", err)
+		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	rows := state.QueryRow(fId, sId)
@@ -56,7 +56,7 @@ func GetSpecialtyName(fId int, sId int) (string, StdOutUnit.MessagedError) {
 	if err == sql.ErrNoRows {
 		return "", StdOutUnit.GetEmptyErrorMessage()
 	} else {
-		StdOutUnit.Warn.String("", "数据库SQL指令执行失败", err)
+		StdOutUnit.Warn("", "数据库SQL指令执行失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 }
@@ -64,12 +64,12 @@ func GetSpecialtyName(fId int, sId int) (string, StdOutUnit.MessagedError) {
 func GetClassName(fId int, sId int, cId int) (string, StdOutUnit.MessagedError) {
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库开始事务失败", err)
+		StdOutUnit.Warn("", "数据库开始事务失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	state, err := tx.Prepare("select `c_name` from `class_chart` where `f_id`=? and `s_id`=? and `c_id`=?")
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库准备SQL指令失败", err)
+		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	rows := state.QueryRow(fId, sId, cId)
@@ -83,7 +83,7 @@ func GetClassName(fId int, sId int, cId int) (string, StdOutUnit.MessagedError) 
 	if err == sql.ErrNoRows {
 		return "", StdOutUnit.GetEmptyErrorMessage()
 	} else {
-		StdOutUnit.Warn.String("", "数据库SQL指令执行失败", err)
+		StdOutUnit.Warn("", "数据库SQL指令执行失败", err)
 		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 }
@@ -97,12 +97,12 @@ type ChartIDItem struct {
 func GetChartIDWithClassName(cName string) (ChartIDItem, StdOutUnit.MessagedError) {
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库开始事务失败", err)
+		StdOutUnit.Warn("", "数据库开始事务失败", err)
 		return ChartIDItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	state, err := tx.Prepare("select `f_id`,`s_id` from `class_chart` where `c_name`=?")
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库准备SQL指令失败", err)
+		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)
 		return ChartIDItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	item := ChartIDItem{}
@@ -116,7 +116,7 @@ func GetChartIDWithClassName(cName string) (ChartIDItem, StdOutUnit.MessagedErro
 	if err == sql.ErrNoRows {
 		return ChartIDItem{}, StdOutUnit.GetEmptyErrorMessage()
 	} else {
-		StdOutUnit.Warn.String("", "数据库SQL指令执行失败", err)
+		StdOutUnit.Warn("", "数据库SQL指令执行失败", err)
 		return ChartIDItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 }
@@ -128,7 +128,7 @@ func WriteFacultyName(fId int, fName string) StdOutUnit.MessagedError {
 	}
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库开始事务失败", err)
+		StdOutUnit.Warn("", "数据库开始事务失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	var state *sql.Stmt
@@ -138,7 +138,7 @@ func WriteFacultyName(fId int, fName string) StdOutUnit.MessagedError {
 		state, err = tx.Prepare("update `faculty_chart` set `f_name`=? where `f_id`=?")
 	}
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库准备SQL指令失败", err)
+		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	if fNameExist == "" {
@@ -148,14 +148,14 @@ func WriteFacultyName(fId int, fName string) StdOutUnit.MessagedError {
 	}
 	if err != nil {
 		_ = tx.Rollback()
-		StdOutUnit.Warn.String("", "数据库SQL指令执行失败", err)
+		StdOutUnit.Warn("", "数据库SQL指令执行失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	tx.Commit()
 	if fNameExist == "" {
-		StdOutUnit.Verbose.String("", "向数据库插入新学院名称字典成功")
+		StdOutUnit.Verbose("", "向数据库插入新学院名称字典成功")
 	} else {
-		StdOutUnit.Verbose.String("", "向数据库更新学院名称字典成功")
+		StdOutUnit.Verbose("", "向数据库更新学院名称字典成功")
 	}
 	return StdOutUnit.GetEmptyErrorMessage()
 }
@@ -167,7 +167,7 @@ func WriteSpecialtyName(fId int, sId int, sName string) StdOutUnit.MessagedError
 	}
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库开始事务失败", err)
+		StdOutUnit.Warn("", "数据库开始事务失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	var state *sql.Stmt
@@ -177,7 +177,7 @@ func WriteSpecialtyName(fId int, sId int, sName string) StdOutUnit.MessagedError
 		state, err = tx.Prepare("update `specialty_chart` set `s_name`=? where `f_id`=? and `s_id`=?")
 	}
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库准备SQL指令失败", err)
+		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	if sNameExist == "" {
@@ -187,14 +187,14 @@ func WriteSpecialtyName(fId int, sId int, sName string) StdOutUnit.MessagedError
 	}
 	if err != nil {
 		_ = tx.Rollback()
-		StdOutUnit.Warn.String("", "数据库SQL指令执行失败", err)
+		StdOutUnit.Warn("", "数据库SQL指令执行失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	tx.Commit()
 	if sNameExist == "" {
-		StdOutUnit.Verbose.String("", "向数据库插入新专业名称字典成功")
+		StdOutUnit.Verbose("", "向数据库插入新专业名称字典成功")
 	} else {
-		StdOutUnit.Verbose.String("", "向数据库更新专业名称字典成功")
+		StdOutUnit.Verbose("", "向数据库更新专业名称字典成功")
 	}
 	return StdOutUnit.GetEmptyErrorMessage()
 }
@@ -206,7 +206,7 @@ func WriteClassName(fId int, sId int, cId int, cName string) StdOutUnit.Messaged
 	}
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库开始事务失败", err)
+		StdOutUnit.Warn("", "数据库开始事务失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	var state *sql.Stmt
@@ -216,7 +216,7 @@ func WriteClassName(fId int, sId int, cId int, cName string) StdOutUnit.Messaged
 		state, err = tx.Prepare("update `class_chart` set `c_name`=? where `f_id`=? and `s_id`=? and `c_id`=?")
 	}
 	if err != nil {
-		StdOutUnit.Warn.String("", "数据库准备SQL指令失败", err)
+		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	if cNameExist == "" {
@@ -226,14 +226,14 @@ func WriteClassName(fId int, sId int, cId int, cName string) StdOutUnit.Messaged
 	}
 	if err != nil {
 		_ = tx.Rollback()
-		StdOutUnit.Warn.String("", "数据库SQL指令执行失败", err)
+		StdOutUnit.Warn("", "数据库SQL指令执行失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	tx.Commit()
 	if cNameExist == "" {
-		StdOutUnit.Verbose.String("", "向数据库插入新班级名称字典成功")
+		StdOutUnit.Verbose("", "向数据库插入新班级名称字典成功")
 	} else {
-		StdOutUnit.Verbose.String("", "向数据库更新班级名称字典成功")
+		StdOutUnit.Verbose("", "向数据库更新班级名称字典成功")
 	}
 	return StdOutUnit.GetEmptyErrorMessage()
 }

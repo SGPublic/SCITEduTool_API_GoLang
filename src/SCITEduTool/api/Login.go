@@ -1,7 +1,7 @@
 package api
 
 import (
-	"SCITEduTool/helper/SessionHelper"
+	"SCITEduTool/module/SessionModule"
 	"SCITEduTool/unit/StdOutUnit"
 	"SCITEduTool/unit/TokenUnit"
 	"net/http"
@@ -26,21 +26,31 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	username := base.GetParameter("username")
 	password := base.GetParameter("password")
-	_, _, err = SessionHelper.Get(username, password)
+	_, _, err = SessionModule.Get(username, password)
 	if err.HasInfo {
-		err.OutMessage(w)
+		if err.Code == 401 {
+			base.OnObjectResult(LoginOut{
+				Code:    200,
+				Message: "账号或密码错误",
+			})
+		} else {
+			err.OutMessage(w)
+		}
 		return
 	}
 	token, err := TokenUnit.Build(username, password)
 	if err.HasInfo {
-		err.OutMessage(w)
-		return
+		goto outError
 	}
-	StdOutUnit.Verbose.String(username, "用户登录成功")
-	StdOutUnit.OnObjectResult(w, LoginOut{
+	StdOutUnit.Verbose(username, "用户登录成功")
+	base.OnObjectResult(LoginOut{
 		Code:         200,
 		Message:      "success.",
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 	})
+	return
+
+outError:
+	err.OutMessage(w)
 }

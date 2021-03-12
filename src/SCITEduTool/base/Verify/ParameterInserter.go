@@ -1,10 +1,11 @@
 package Verify
 
 import (
-	"SCITEduTool/base/LocalDebug"
-	"SCITEduTool/unit/StdOutUnit"
 	"net/http"
-	"sort"
+
+	"SCITEduTool/base/LocalDebug"
+	"SCITEduTool/manager/SignManager"
+	"SCITEduTool/unit/StdOutUnit"
 )
 
 func InsertParameter(request *http.Request, parameter map[string]string) (map[string]string, StdOutUnit.MessagedError) {
@@ -14,31 +15,22 @@ func InsertParameter(request *http.Request, parameter map[string]string) (map[st
 	if !LocalDebug.IsDebug() {
 		parameter["ts"] = ""
 		parameter["sign"] = ""
-		parameter["platform"] = ""
-		parameter["app_key"] = ""
+		parameter["platform"] = "web"
+		parameter["app_key"] = SignManager.GetDefaultAppSecretByPlatform("web")
 	}
-	parameterOut := make(map[string]string)
-	parameterKeys := make([]string, 0)
 	for key := range parameter {
-		parameterKeys = append(parameterKeys, key)
-	}
-	sort.Strings(parameterKeys)
-	for _, key := range parameterKeys {
 		param := getParameter(request, key)
 		if param != "" {
-			parameterOut[key] = param
+			parameter[key] = param
 			continue
 		}
 		if parameter[key] == "" {
-			username := getParameter(request, "username")
-			if username == "" {
-				username = "Unknown"
-			}
+			StdOutUnit.Info("", "{"+request.RequestURI+"} 请求参数缺失："+key)
 			return nil, StdOutUnit.GetErrorMessage(-417, "参数缺失")
 		}
-		parameterOut[key] = parameter[key]
+		parameter[key] = parameter[key]
 	}
-	return parameterOut, StdOutUnit.MessagedError{}
+	return parameter, StdOutUnit.MessagedError{}
 }
 
 func getParameter(request *http.Request, key string) string {

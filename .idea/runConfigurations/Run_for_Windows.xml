@@ -12,8 +12,6 @@
     <package value="main" />
     <directory value="$PROJECT_DIR$" />
     <output_directory value="$PROJECT_DIR$/bin" />
-    <method v="2">
-      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Run for Linux" run_configuration_type="GoApplicationRunConfiguration" />
-    </method>
+    <method v="2" />
   </configuration>
 </component>

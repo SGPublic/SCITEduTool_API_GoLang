@@ -50,22 +50,22 @@ func InitKey(tokenConf TokenConfig) {
 	if tokenConf.TokenKey == "" || tokenConf.TokenSecret == "" ||
 		strings.Contains(tokenConf.TokenKey, "//") ||
 		strings.Contains(tokenConf.TokenSecret, "//") {
-		StdOutUnit.Assert.String("", "token_key或token_secret为空或格式不正确", nil)
+		StdOutUnit.Assert("", "token_key或token_secret为空或格式不正确", nil)
 		os.Exit(0)
 	}
 	tokenKey = tokenConf.TokenKey
 	tokenSecret = tokenConf.TokenSecret
 	access, err = strconv.ParseInt(tokenConf.AccessExpired, 10, 64)
 	if err != nil {
-		StdOutUnit.Warn.String("", "access_token过期时间解析失败，将使用默认值", err)
+		StdOutUnit.Warn("", "access_token过期时间解析失败，将使用默认值", err)
 		access = 2592000
 	}
 	refresh, err = strconv.ParseInt(tokenConf.RefreshExpired, 10, 64)
 	if err != nil {
-		StdOutUnit.Warn.String("", "refresh_token过期时间解析失败，将使用默认值", err)
+		StdOutUnit.Warn("", "refresh_token过期时间解析失败，将使用默认值", err)
 		refresh = 124416000
 	} else {
-		StdOutUnit.Verbose.String("", "Token配置成功")
+		StdOutUnit.Verbose("", "Token配置成功")
 	}
 }
 
@@ -118,26 +118,26 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 	username := ""
 	if token.AccessToken == "" {
 		if token.RefreshToken != "" {
-			StdOutUnit.Info.String("", "refresh_token无法验证")
+			StdOutUnit.Info("", "refresh_token无法验证")
 		} else {
-			StdOutUnit.Info.String("", "无token可验证")
+			StdOutUnit.Info("", "无token可验证")
 		}
 		return "", StdOutUnit.GetErrorMessage(-403, "无法验证的令牌")
 	}
 
 	accessPre := strings.Split(token.AccessToken, ".")
 	if len(accessPre) != 3 {
-		StdOutUnit.Info.String("", "access_token格式错误")
+		StdOutUnit.Info("", "access_token格式错误")
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	headerPre, err := base64.StdEncoding.DecodeString(accessPre[1])
 	if err != nil {
-		StdOutUnit.Warn.String("", "token header解析错误", err)
+		StdOutUnit.Warn("", "token header解析错误", err)
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	header := strings.Split(strings.ReplaceAll(string(headerPre), "%", ""), "&")
 	if len(header) != 2 {
-		StdOutUnit.Info.String("", "token header格式错误")
+		StdOutUnit.Info("", "token header格式错误")
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	username = header[0]
@@ -161,12 +161,14 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 	}
 	tokenCreateTime, err := strconv.ParseInt(header[1], 10, 64)
 	if err != nil {
-		StdOutUnit.Warn.String("", "token创建时间解析错误", err)
+		StdOutUnit.Warn("", "token创建时间解析错误", err)
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	if tokenCreateTime+access < time.Now().Unix() {
-		StdOutUnit.Info.String("", "access_token过期")
-		return username, StdOutUnit.GetErrorMessage(-403, "令牌失效")
+		StdOutUnit.Info("", "access_token过期")
+		if token.RefreshToken == "" {
+			return username, StdOutUnit.GetErrorMessage(-403, "令牌失效")
+		}
 	}
 	accessBodyPre, _ := json.Marshal(TokenBody{
 		Password: password,
@@ -176,12 +178,12 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 	})
 	accessBody := getMD5(accessBodyPre)
 	if accessBody != accessPre[0] {
-		StdOutUnit.Info.String("", "access_token body无效")
+		StdOutUnit.Info("", "access_token body无效")
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	accessCheckPre := accessBody + "." + accessPre[1] + "." + tokenSecret
 	if getMD5([]byte(accessCheckPre)) != accessPre[2] {
-		StdOutUnit.Info.String("", "access_token签名无效")
+		StdOutUnit.Info("", "access_token签名无效")
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 
@@ -189,12 +191,12 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 		return username, StdOutUnit.GetEmptyErrorMessage()
 	}
 	if tokenCreateTime+refresh < time.Now().Unix() {
-		StdOutUnit.Info.String("", "refresh_token过期")
+		StdOutUnit.Info("", "refresh_token过期")
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌失效")
 	}
 	refreshPre := strings.Split(token.RefreshToken, ".")
 	if len(refreshPre) != 2 {
-		StdOutUnit.Info.String("", "refresh_token格式错误")
+		StdOutUnit.Info("", "refresh_token格式错误")
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	refreshBodyPre, _ := json.Marshal(TokenBody{
@@ -205,12 +207,12 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 	})
 	refreshBody := getMD5(refreshBodyPre)
 	if refreshBody != refreshPre[0] {
-		StdOutUnit.Info.String("", "refresh_token body无效")
+		StdOutUnit.Info("", "refresh_token body无效")
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
 	refreshCheckPre := refreshBody + "." + accessPre[1] + "." + tokenSecret
 	if getFullMD5([]byte(refreshCheckPre)) != refreshPre[1] {
-		StdOutUnit.Info.String("", "refresh_token签名无效")
+		StdOutUnit.Info("", "refresh_token签名无效")
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	} else {
 		return username, StdOutUnit.GetEmptyErrorMessage()

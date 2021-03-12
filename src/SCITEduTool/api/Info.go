@@ -1,8 +1,8 @@
 package api
 
 import (
-	"SCITEduTool/helper/InfoHelper"
 	"SCITEduTool/manager/ChartManager"
+	"SCITEduTool/module/InfoModule"
 	"SCITEduTool/unit/StdOutUnit"
 	"SCITEduTool/unit/TokenUnit"
 	"net/http"
@@ -39,7 +39,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		err.OutMessage(w)
 		return
 	}
-	info, err := InfoHelper.Get(username)
+	info, err := InfoModule.Get(username)
 	if err.HasInfo {
 		err.OutMessage(w)
 		return
@@ -60,8 +60,8 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	StdOutUnit.Verbose.String(username, "用户获取基本信息成功")
-	StdOutUnit.OnObjectResult(w, InfoOut{
+	StdOutUnit.Verbose(username, "用户获取基本信息成功")
+	base.OnObjectResult(InfoOut{
 		Code:    200,
 		Message: "success.",
 		Info: InfoOutContent{

@@ -1,9 +1,10 @@
 package api
 
 import (
-	"SCITEduTool/unit/StdOutUnit"
 	"net/http"
 	"time"
+
+	"SCITEduTool/unit/StdOutUnit"
 )
 
 const (
@@ -18,21 +19,20 @@ func Day(w http.ResponseWriter, r *http.Request) {
 		errMessage.OutMessage(w)
 		return
 	}
-
 	timeStart := time.Date(2021, 2, 28, 0, 0, 0, 0, time.Local)
 	timeNow := time.Now()
 
 	left := timeNow.Sub(timeStart)
 
-	StdOutUnit.Verbose.String("", "用户获取开学日期成功")
+	StdOutUnit.Verbose("", "用户获取开学日期成功")
 	base.OnObjectResult(struct {
-		Code       int
-		Message    string
-		DayCount   int
-		Date       string
-		Semester   int
-		SchoolYear string
-		Evaluation bool
+		Code       int    `json:"code"`
+		Message    string `json:"message"`
+		DayCount   int    `json:"day_count"`
+		Date       string `json:"date"`
+		Semester   int    `json:"semester"`
+		SchoolYear string `json:"school_year"`
+		Evaluation bool   `json:"evaluation"`
 	}{
 		Code:       200,
 		Message:    "success.",
