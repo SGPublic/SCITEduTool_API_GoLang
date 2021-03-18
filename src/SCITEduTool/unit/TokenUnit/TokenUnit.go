@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/manager/SessionManager"
 	"SCITEduTool/unit/RSAStaticUnit"
 	"SCITEduTool/unit/StdOutUnit"
@@ -82,14 +83,18 @@ func Build(username string, password string) (Token, StdOutUnit.MessagedError) {
 	header := base64.StdEncoding.EncodeToString([]byte(headerPre))
 	token.AccessToken += header + "."
 
-	passwordPre, err := RSAStaticUnit.DecodePublicEncode(password)
-	if err.HasInfo {
-		return Token{}, err
+	passwordPre := password
+	if !LocalDebug.IsDebug() {
+		var err StdOutUnit.MessagedError
+		passwordPre, err = RSAStaticUnit.DecodePublicEncode(passwordPre)
+		if err.HasInfo {
+			return Token{}, err
+		}
+		if len(passwordPre) <= 8 {
+			return Token{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		}
+		passwordPre = passwordPre[8:]
 	}
-	if len(passwordPre) <= 8 {
-		return Token{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
-	passwordPre = passwordPre[8:]
 
 	accessBodyPre, _ := json.Marshal(TokenBody{
 		Password: passwordPre,
@@ -145,17 +150,16 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 	if errMessage.HasInfo {
 		return "", errMessage
 	}
-	password, errMessage = RSAStaticUnit.DecodePublicEncode(password)
-	if errMessage.HasInfo {
-		return "", errMessage
+	if !LocalDebug.IsDebug() {
+		password, errMessage = RSAStaticUnit.DecodePublicEncode(password)
+		if errMessage.HasInfo {
+			return "", errMessage
+		}
+		if len(password) <= 8 {
+			return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		}
+		password = password[8:]
 	}
-	if len(password) <= 8 {
-		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
-	if errMessage.HasInfo {
-		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
-	}
-	password = password[8:]
 	if password == "" {
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}

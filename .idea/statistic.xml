@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Statistic">
+    <option name="separateTabsFileTypes" value="go" />
+    <option name="excludedDirectories">
+      <list>
+        <option value="$PROJECT_DIR$/src/github.com" />
+        <option value="$PROJECT_DIR$/src/golang.org" />
+      </list>
+    </option>
+  </component>
+</project>

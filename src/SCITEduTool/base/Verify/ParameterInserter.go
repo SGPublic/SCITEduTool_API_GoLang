@@ -1,14 +1,17 @@
 package Verify
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"net/http"
+	"sort"
 
 	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/manager/SignManager"
 	"SCITEduTool/unit/StdOutUnit"
 )
 
-func InsertParameter(request *http.Request, parameter map[string]string) (map[string]string, StdOutUnit.MessagedError) {
+func InsertParameter(request *http.Request, parameter map[string]string) (map[string]string, bool, StdOutUnit.MessagedError) {
 	if parameter == nil {
 		parameter = make(map[string]string)
 	}
@@ -18,19 +21,50 @@ func InsertParameter(request *http.Request, parameter map[string]string) (map[st
 		parameter["platform"] = "web"
 		parameter["app_key"] = SignManager.GetDefaultAppSecretByPlatform("web")
 	}
+	parString := ""
+	var parameterKeys []string
 	for key := range parameter {
+		parameterKeys = append(parameterKeys, key)
+	}
+	sort.Strings(parameterKeys)
+	for _, key := range parameterKeys {
 		param := getParameter(request, key)
+		if param == "@null" {
+			return nil, false, StdOutUnit.GetErrorMessage(-417, "不支持的请求方式")
+		}
 		if param != "" {
 			parameter[key] = param
+			if key != "sign" {
+				if parString != "" {
+					parString += "&"
+				}
+				parString += key + "=" + param
+			}
 			continue
 		}
 		if parameter[key] == "" {
 			StdOutUnit.Info("", "{"+request.RequestURI+"} 请求参数缺失："+key)
-			return nil, StdOutUnit.GetErrorMessage(-417, "参数缺失")
+			return nil, false, StdOutUnit.GetErrorMessage(-417, "参数缺失")
 		}
-		parameter[key] = parameter[key]
 	}
-	return parameter, StdOutUnit.MessagedError{}
+
+	if LocalDebug.IsDebug() {
+		return parameter, true, StdOutUnit.GetEmptyErrorMessage()
+	}
+	appSecret := SignManager.GetAppSecretByAppKey(parameter["app_key"], parameter["platform"])
+	if appSecret == "" {
+		return nil, false, StdOutUnit.GetErrorMessage(-403, "应用密钥不存在")
+	}
+
+	h := md5.New()
+	h.Write([]byte(parString + appSecret))
+	sign := hex.EncodeToString(h.Sum(nil))
+	if sign == parameter["sign"] {
+		return parameter, true, StdOutUnit.GetEmptyErrorMessage()
+	} else {
+		StdOutUnit.Debug("", parString, nil)
+		return nil, false, StdOutUnit.GetEmptyErrorMessage()
+	}
 }
 
 func getParameter(request *http.Request, key string) string {
@@ -38,8 +72,10 @@ func getParameter(request *http.Request, key string) string {
 	if value != "" {
 		return value
 	}
-	if LocalDebug.IsDebug() {
+	value = request.FormValue(key)
+	if !LocalDebug.IsDebug() && value != "" {
+		return "@null"
+	} else {
 		return request.FormValue(key)
 	}
-	return ""
 }

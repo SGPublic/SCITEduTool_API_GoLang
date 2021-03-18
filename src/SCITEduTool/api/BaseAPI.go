@@ -16,14 +16,11 @@ type BaseAPI struct {
 }
 
 func SetupAPI(w http.ResponseWriter, r *http.Request, parameterGet map[string]string) (BaseAPI, StdOutUnit.MessagedError) {
-	parameter, err := Verify.InsertParameter(r, parameterGet)
+	parameter, sign, err := Verify.InsertParameter(r, parameterGet)
 	if err.HasInfo {
 		return BaseAPI{}, err
 	}
-	sign, err := Verify.VerificationSign(parameter)
-	if err.HasInfo {
-		return BaseAPI{}, err
-	}
+
 	if !sign {
 		return BaseAPI{}, StdOutUnit.GetErrorMessage(-403, "服务签名错误")
 	}

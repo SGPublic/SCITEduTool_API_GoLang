@@ -25,9 +25,6 @@ func Get(username string, year string, semester int) (AchieveManager.AchieveObje
 	if errMessage.HasInfo {
 		return AchieveManager.AchieveObject{}, errMessage
 	}
-	if errMessage.HasInfo {
-		return AchieveManager.AchieveObject{}, errMessage
-	}
 	tableContent, errMessage := Refresh(username, year, semester, session, info)
 	if errMessage.HasInfo {
 		return AchieveManager.AchieveObject{}, errMessage

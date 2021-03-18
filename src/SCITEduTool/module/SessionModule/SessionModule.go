@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/manager/SessionManager"
 	"SCITEduTool/unit/RSAStaticUnit"
 	"SCITEduTool/unit/StdOutUnit"
@@ -129,15 +130,17 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 	}
 	lt = lt[11 : len(lt)-1]
 
-	passwordDecode := ""
-	decode, errDecode := RSAStaticUnit.DecodePublicEncode(password)
-	if errDecode.HasInfo {
-		return "", 0, errDecode
+	passwordDecode := password
+	if !LocalDebug.IsDebug() {
+		decode, errDecode := RSAStaticUnit.DecodePublicEncode(passwordDecode)
+		if errDecode.HasInfo {
+			return "", 0, errDecode
+		}
+		if len(decode) <= 8 {
+			return "", 0, StdOutUnit.GetErrorMessage(-401, "密码校验失败")
+		}
+		passwordDecode = decode[8:]
 	}
-	if len(decode) <= 8 {
-		return "", 0, StdOutUnit.GetErrorMessage(-401, "密码校验失败")
-	}
-	passwordDecode = decode[8:]
 
 	form := url.Values{}
 	form.Set("useValidateCode", "0")

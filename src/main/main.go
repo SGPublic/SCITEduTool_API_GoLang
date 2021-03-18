@@ -25,6 +25,7 @@ func RegisterAPI() {
 	registerApi("/table", api.Table)
 	registerApi("/achieve", api.Achieve)
 	registerApi("/exam", api.Exam)
+	registerApi("/news", api.News)
 	startService(addr)
 }
 

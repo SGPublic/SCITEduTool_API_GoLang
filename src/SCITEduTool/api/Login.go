@@ -26,11 +26,15 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	username := base.GetParameter("username")
 	password := base.GetParameter("password")
+	StdOutUnit.Debug(username, password, nil)
 	_, _, err = SessionModule.Get(username, password)
 	if err.HasInfo {
-		if err.Code == 401 {
-			base.OnObjectResult(LoginOut{
-				Code:    200,
+		if err.Code == -401 {
+			base.OnObjectResult(struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			}{
+				Code:    -401,
 				Message: "账号或密码错误",
 			})
 		} else {
