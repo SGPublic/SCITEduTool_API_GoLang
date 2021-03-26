@@ -1,12 +1,14 @@
 package InfoModule
 
 import (
+	"SCITEduTool/consts"
 	"SCITEduTool/manager/ChartManager"
 	"SCITEduTool/manager/InfoManager"
 	"SCITEduTool/module/SessionModule"
 	"SCITEduTool/unit/StdOutUnit"
-	"io/ioutil"
+	"github.com/PuerkitoBio/goquery"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -56,140 +58,158 @@ func studentInfo(username string, session string) (InfoManager.UserInfo, StdOutU
 			return http.ErrUseLastResponse
 		},
 	}
-	url := "http://218.6.163.93:8081/xsgrxx.aspx?xh=" + username
-	req, _ := http.NewRequest("GET", url, nil)
+	urlString := "http://218.6.163.93:8081/xsgrxx.aspx?xh=" + username
+	req, _ := http.NewRequest("GET", urlString, nil)
 	req.AddCookie(&http.Cookie{Name: "ASP.NET_SessionId", Value: session})
-	req.Header.Add("Referer", url)
+	req.Header.Add("Referer", urlString)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
 	if err != nil {
 		StdOutUnit.Error(username, "网络请求失败", err)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	resp.Body.Close()
-	r, _ := regexp.Compile("__VIEWSTATE\" value=\"(.*?)\"")
-	viewState := r.FindString(string(body))
+	if err != nil {
+		StdOutUnit.Error("", "HTML解析失败", err)
+		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	viewState := doc.Find("#__VIEWSTATE").AttrOr("value", "")
 	if viewState == "" {
 		StdOutUnit.Error(username, "未发现 __VIEWSTATE", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
-	r, _ = regexp.Compile("lbl_dqszj\">(.*?)<")
-	grade_pre := r.FindString(string(body))
-	if grade_pre == "" {
-		StdOutUnit.Error(username, "年级名称获取失败", nil)
+	gradePre := doc.Find("#lbl_dqszj").Text()
+	if gradePre == "" {
+		StdOutUnit.Error(username, "年级获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	grade_pre = grade_pre[11 : len(grade_pre)-1]
-	grade, err := strconv.Atoi(grade_pre)
+	grade, err := strconv.Atoi(gradePre)
 	if err != nil {
 		StdOutUnit.Error(username, "年级ID解析失败", err)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
-	r, _ = regexp.Compile("\"xm\">(.*?)<")
-	name := r.FindString(string(body))
+	name := doc.Find("#xm").Text()
 	if name == "" {
 		StdOutUnit.Error(username, "姓名名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	name = name[5 : len(name)-1]
 
-	r, _ = regexp.Compile("lbl_xzb\">(.*?)<")
-	lbl_xzb := r.FindString(string(body))
-	if lbl_xzb == "" {
+	lblXzb := doc.Find("#lbl_xzb").Text()
+	if lblXzb == "" {
 		StdOutUnit.Error(username, "班级名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	lbl_xzb = lbl_xzb[9 : len(lbl_xzb)-1]
-	r, _ = regexp.Compile("(\\d+)\\.?(\\d+)班")
-	class_pre := r.FindString(string(body))
-	if class_pre == "" {
+	r, _ := regexp.Compile("(\\d+)\\.?(\\d+)班")
+	classPre := r.FindString(lblXzb)
+	if classPre == "" {
 		StdOutUnit.Error(username, "班级ID获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	class, err := strconv.Atoi(strings.ReplaceAll(class_pre, "班", ""))
+	class, err := strconv.Atoi(strings.ReplaceAll(classPre, "班", ""))
 	if err != nil {
 		StdOutUnit.Error(username, "班级ID解析失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
-	r, _ = regexp.Compile("lbl_xy\">(.*?)<")
-	lbl_xy := r.FindString(string(body))
-	if lbl_xy == "" {
+	lblXy := doc.Find("#lbl_xy").Text()
+	if lblXy == "" {
 		StdOutUnit.Error(username, "学院名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	lbl_xy = lbl_xy[8 : len(lbl_xy)-1]
 
-	r, _ = regexp.Compile("lbl_zymc\">(.*?)<")
-	lbl_zymc_pre := r.FindString(string(body))
-	if lbl_zymc_pre == "" {
+	lblZymc := doc.Find("#lbl_zymc").Text()
+	StdOutUnit.Debug(username, lblZymc, nil)
+	if lblZymc == "" {
 		StdOutUnit.Error(username, "专业名称获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	lbl_zymc_pre = lbl_zymc_pre[10 : len(lbl_zymc_pre)-1]
-	lbl_zymc := strings.ReplaceAll(lbl_zymc_pre, "（", "(")
 
-	url = "http://218.6.163.93:8081/tjkbcx.aspx?xh=" + username
-	req, _ = http.NewRequest("GET", url, nil)
+	urlString = "http://218.6.163.93:8081/tjkbcx.aspx?xh=" + username
+	req, _ = http.NewRequest("GET", urlString, nil)
 	req.AddCookie(&http.Cookie{Name: "ASP.NET_SessionId", Value: session})
-	req.Header.Add("Referer", url)
+	req.Header.Add("Referer", urlString)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err = client.Do(req)
 	if err != nil {
 		StdOutUnit.Error(username, "网络请求失败", err)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	body, err = ioutil.ReadAll(resp.Body)
-
-	lbl_zymc_id := -1
-	lbl_xy_id := -1
-
-	r, _ = regexp.Compile("完成评价工作后")
-	reeult := r.MatchString(string(body))
-	if reeult {
-		item, _ := ChartManager.GetChartIDWithClassName(lbl_xzb)
-		if !item.Exist {
-			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-		lbl_xy_id = item.FacultyId
-		lbl_zymc_id = item.SpecialtyId
-	} else {
-		r, _ = regexp.Compile("value=\"(.*?)\">" + lbl_xy)
-		lbl_xy_id_pre := r.FindString(string(body))
-		if lbl_xy_id_pre == "" {
-			StdOutUnit.Error(username, "学院ID获取失败", nil)
-			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-		lbl_xy_id, err = strconv.Atoi(lbl_xy_id_pre[7 : len(lbl_xy_id_pre)-len(lbl_xy)-2])
-		if err != nil {
-			StdOutUnit.Debug(username, "学院ID解析失败", err)
-			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-
-		r, _ = regexp.Compile("value=\"(.*?)\">" + lbl_zymc_pre)
-		lbl_zymc_id_pre := r.FindString(string(body))
-		if lbl_zymc_id_pre == "" {
-			StdOutUnit.Error(username, "专业ID获取失败", nil)
-			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-		lbl_zymc_id, err = strconv.Atoi(lbl_zymc_id_pre[7 : len(lbl_zymc_id_pre)-len(lbl_zymc_pre)-2])
-		if err != nil {
-			StdOutUnit.Debug(username, "专业ID解析失败", err)
-			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-	}
-	if lbl_zymc_id < 0 || lbl_xy_id < 0 {
+	doc, err = goquery.NewDocumentFromReader(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		StdOutUnit.Error("", "HTML解析失败", err)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	ChartManager.WriteFacultyName(lbl_xy_id, lbl_xy)
-	ChartManager.WriteSpecialtyName(lbl_xy_id, lbl_zymc_id, lbl_zymc)
-	ChartManager.WriteClassName(lbl_xy_id, lbl_zymc_id, class, lbl_xzb)
-	InfoManager.Update(username, name, lbl_xy_id, lbl_zymc_id, class, grade)
+	viewState = doc.Find("#__VIEWSTATE").AttrOr("value", "")
+	if viewState == "" {
+		StdOutUnit.Error(username, "未发现 __VIEWSTATE", nil)
+		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+
+	lblXyId := -1
+	doc.Find("#xy").Find("option").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		if s.Text() == lblXy {
+			lblXyId, _ = strconv.Atoi(s.AttrOr("value", "-1"))
+			return false
+		}
+		return true
+	})
+	if lblXyId == -1 {
+		StdOutUnit.Error(username, "学院ID获取失败", nil)
+		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+
+	form := url.Values{}
+	form.Set("__EVENTTARGET", "xq")
+	form.Set("__EVENTARGUMENT", "")
+	form.Set("__LASTFOCUS", "")
+	form.Set("__VIEWSTATE", viewState)
+	form.Set("__VIEWSTATEGENERATOR", "3189F21D")
+	form.Set("xn", consts.SchoolYear)
+	form.Set("xq", "1")
+	form.Set("nj", gradePre)
+	form.Set("xy", strconv.Itoa(lblXyId))
+	req, _ = http.NewRequest("POST", urlString, strings.NewReader(strings.TrimSpace(form.Encode())))
+	req.AddCookie(&http.Cookie{Name: "ASP.NET_SessionId", Value: session})
+	req.Header.Add("Referer", urlString)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err = client.Do(req)
+	if err != nil {
+		StdOutUnit.Error(username, "网络请求失败", err)
+		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+
+	doc, err = goquery.NewDocumentFromReader(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		StdOutUnit.Error("", "HTML解析失败", err)
+		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+
+	lblZymcId := -1
+	doc.Find("#zy").Find("option").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		if s.Text() == lblZymc {
+			lblZymcId, _ = strconv.Atoi(s.AttrOr("value", "-1"))
+			return false
+		}
+		return true
+	})
+	if lblZymcId == -1 {
+		StdOutUnit.Error(username, "专业ID获取失败", nil)
+		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+
+	ChartManager.WriteFacultyName(lblXyId, lblXy)
+	ChartManager.WriteSpecialtyName(lblXyId, lblZymcId, lblZymc)
+	ChartManager.WriteClassName(lblXyId, lblZymcId, class, lblXzb)
+	InfoManager.Update(username, name, lblXyId, lblZymcId, class, grade)
 	return InfoManager.UserInfo{
 		Name:      name,
-		Faculty:   lbl_xy_id,
-		Specialty: lbl_zymc_id,
+		Faculty:   lblXyId,
+		Specialty: lblZymcId,
 		Class:     class,
 		Grade:     grade,
 	}, StdOutUnit.GetEmptyErrorMessage()

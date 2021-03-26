@@ -11,6 +11,7 @@ import (
 	"SCITEduTool/manager/SessionManager"
 	"SCITEduTool/unit/RSAStaticUnit"
 	"SCITEduTool/unit/StdOutUnit"
+	"github.com/PuerkitoBio/goquery"
 )
 
 func Get(username string, password string) (string, int, StdOutUnit.MessagedError) {
@@ -120,15 +121,22 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 	}
 	Jsessionid1 = Jsessionid1[11 : len(Jsessionid1)-1]
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	r, _ = regexp.Compile("lt\" value=\"(.*?)\"")
-	lt := r.FindString(string(body))
-	if len(lt) <= 11 {
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		StdOutUnit.Error("", "HTML解析失败", err)
+		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	ltDoc := doc.Find(".btn").Find("span").Find("input")
+	if ltDoc.AttrOr("name", "nil") != "lt" {
 		StdOutUnit.Error(username, "lt 获取失败", nil)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	lt = lt[11 : len(lt)-1]
+	lt := ltDoc.AttrOr("value", "nil")
+	if lt == "nil" {
+		StdOutUnit.Error(username, "lt 解析失败", nil)
+		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
 
 	passwordDecode := password
 	if !LocalDebug.IsDebug() {
@@ -234,7 +242,7 @@ func GetVerifyLocation(username string, password string) (string, int, StdOutUni
 		StdOutUnit.Error(username, "网络请求失败", err)
 		return "", 0, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	identity := -1
 	student, _ := regexp.MatchString("student", string(body))
 	teacher, _ := regexp.MatchString("teacher", string(body))

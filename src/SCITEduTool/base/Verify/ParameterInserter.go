@@ -29,9 +29,9 @@ func InsertParameter(request *http.Request, parameter map[string]string) (map[st
 	sort.Strings(parameterKeys)
 	for _, key := range parameterKeys {
 		param := getParameter(request, key)
-		if param == "@null" {
-			return nil, false, StdOutUnit.GetErrorMessage(-417, "不支持的请求方式")
-		}
+		//if param == "@null" {
+		//	return nil, false, StdOutUnit.GetErrorMessage(-417, "不支持的请求方式")
+		//}
 		if param != "" {
 			parameter[key] = param
 			if key != "sign" {
@@ -73,9 +73,10 @@ func getParameter(request *http.Request, key string) string {
 		return value
 	}
 	value = request.FormValue(key)
-	if !LocalDebug.IsDebug() && value != "" {
-		return "@null"
-	} else {
-		return request.FormValue(key)
-	}
+	//if value != "" {
+	//	return value
+	//}
+	//_ = request.ParseMultipartForm(1024 * 1024 * 5)
+	//value = request.MultipartForm.Value[key][0]
+	return value
 }

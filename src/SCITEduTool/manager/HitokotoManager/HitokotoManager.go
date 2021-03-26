@@ -35,7 +35,7 @@ func Get() (HitokotoItem, StdOutUnit.MessagedError) {
 		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)
 		return HitokotoItem{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	rows := state.QueryRow(time.Now().Unix() - 300)
+	rows := state.QueryRow(time.Now().Unix() - 3600)
 	hId := 0
 	err = rows.Scan(&hId)
 	if err == nil {

@@ -1,8 +1,8 @@
 package AchieveManager
 
 import (
-	"database/sql"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -43,42 +43,86 @@ type AchieveContent struct {
 	Achieve string
 }
 
-func Get(username string, grade int, schoolYear string, semester int) (AchieveContent, StdOutUnit.MessagedError) {
+type TableExtractInfo struct {
+	Name      string
+	Data      []byte
+	ErrorInfo string
+}
+
+func Get(username string, year string, semester int) (TableExtractInfo, StdOutUnit.MessagedError) {
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
 		StdOutUnit.Warn(username, "数据库开始事务失败", err)
-		return AchieveContent{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		return TableExtractInfo{
+			ErrorInfo: "服务器内部错误",
+		}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	achieveId := GetAchieveId(grade, schoolYear, semester)
-	if achieveId == "" {
-		StdOutUnit.Warn("", "成绩单编号解析失败", err)
-		return AchieveContent{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
-	state, err := tx.Prepare("select `a_content_" + achieveId + "` from `student_achieve` where `u_id`=?")
+	state, err := tx.Prepare("select `u_faculty`,`u_specialty`,`u_class`,`u_name` from `user_info` where `u_id`=?")
 	if err != nil {
 		_ = tx.Rollback()
 		StdOutUnit.Warn(username, "数据库准备SQL指令失败", err)
-		return AchieveContent{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		return TableExtractInfo{
+			ErrorInfo: "服务器内部错误",
+		}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	rows := state.QueryRow(username)
-	achieve := AchieveContent{}
-	achieveString := sql.NullString{}
-	err = rows.Scan(&achieveString)
-	if err == nil {
-		tx.Commit()
-		achieve.Exist = achieveString.Valid
-		if achieveString.Valid {
-			achieve.Achieve = achieveString.String
-		}
-		return achieve, StdOutUnit.GetEmptyErrorMessage()
+	info := InfoManager.UserInfo{}
+	err = rows.Scan(&info.Faculty, &info.Specialty, &info.Class, &info.Name)
+	if err != nil {
+		StdOutUnit.Warn(username, "数据库执行指令失败", err)
+		return TableExtractInfo{
+			ErrorInfo: "用户信息不存在",
+		}, StdOutUnit.GetErrorMessage(-500, "请求处理失败")
 	}
-	if err == sql.ErrNoRows {
-		tx.Commit()
-		return AchieveContent{}, StdOutUnit.GetEmptyErrorMessage()
+	baseDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		StdOutUnit.Warn("", "运行目录获取失败", err)
+		return TableExtractInfo{
+			ErrorInfo: "服务器内部错误",
+		}, StdOutUnit.GetErrorMessage(-500, "请求处理失败")
+	}
+	baseDir += "/achieve"
+	tableDir := baseDir + "/user/" + year + "/" + strconv.Itoa(semester) + "/" + strconv.Itoa(info.Faculty) + "/" + strconv.Itoa(info.Specialty) +
+		"/" + strconv.Itoa(info.Class) + "/"
+	_, err = os.Stat(tableDir)
+	if err == nil {
+		goto readFile
+	}
+	if os.IsNotExist(err) {
+		StdOutUnit.Warn("", "成绩单目录不存在", err)
 	} else {
-		_ = tx.Rollback()
-		StdOutUnit.Warn(username, "数据库SQL指令执行失败", err)
-		return AchieveContent{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		StdOutUnit.Warn("", "成绩单目录信息失败", err)
+	}
+	return TableExtractInfo{
+		ErrorInfo: "目标成绩单不存在",
+	}, StdOutUnit.GetErrorMessage(-500, "请求处理失败")
+
+readFile:
+	_, err = os.Stat(tableDir + username + ".xlsx")
+	if err == nil {
+		goto returnResult
+	}
+	if os.IsNotExist(err) {
+		StdOutUnit.Warn("", "成绩单目录信息失败", err)
+	} else {
+		StdOutUnit.Warn("", "成绩单目录信息失败", err)
+	}
+	return TableExtractInfo{
+		ErrorInfo: "目标成绩单不存在",
+	}, StdOutUnit.GetErrorMessage(-500, "请求处理失败")
+
+returnResult:
+	table, err := ioutil.ReadFile(tableDir + username + ".xlsx")
+	if err == nil {
+		return TableExtractInfo{
+			Name: info.Name,
+			Data: table,
+		}, StdOutUnit.GetEmptyErrorMessage()
+	} else {
+		StdOutUnit.Error("", "成绩单读取失败", err)
+		return TableExtractInfo{
+			ErrorInfo: "服务器内部错误",
+		}, StdOutUnit.GetErrorMessage(-500, "请求处理失败")
 	}
 }
 
@@ -224,15 +268,30 @@ startExtract:
 		_ = table.SetRowHeight("achieve", 6+index, 18.0)
 		mark, err := strconv.Atoi(current.Mark)
 		if err != nil {
-			mark = 0
+			markFloat, err := strconv.ParseFloat(current.Mark, 32)
+			if err != nil {
+				mark = 0
+			} else {
+				mark = int(markFloat)
+			}
 		}
 		retake, err := strconv.Atoi(current.Retake)
 		if err != nil {
-			retake = 0
+			markFloat, err := strconv.ParseFloat(current.Retake, 32)
+			if err != nil {
+				mark = 0
+			} else {
+				mark = int(markFloat)
+			}
 		}
 		rebuild, err := strconv.Atoi(current.Rebuild)
 		if err != nil {
-			rebuild = 0
+			markFloat, err := strconv.ParseFloat(current.Rebuild, 32)
+			if err != nil {
+				mark = 0
+			} else {
+				mark = int(markFloat)
+			}
 		}
 		pass := !(mark >= 60) && !(retake >= 60) && !(rebuild >= 60)
 		if pass {
@@ -250,14 +309,4 @@ startExtract:
 	} else {
 		return StdOutUnit.GetEmptyErrorMessage()
 	}
-}
-
-func GetAchieveId(grade int, schoolYear string, semester int) string {
-	year := strings.Split(schoolYear, "-")
-	yearStart, err := strconv.Atoi(year[0])
-	if err != nil {
-		return ""
-	}
-	result := "0" + strconv.Itoa((yearStart-grade)*2+semester)
-	return result[len(result)-2:]
 }

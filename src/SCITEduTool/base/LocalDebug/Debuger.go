@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -12,7 +13,7 @@ func IsDebug() bool {
 	if err != nil {
 		return false
 	}
-	return path[0:12] == "E:\\Documents"
+	return strings.Contains(path, "Documents")
 }
 
 func CheckLogDir() (bool, string) {
@@ -24,7 +25,7 @@ func CheckLogDir() (bool, string) {
 	if !os.IsNotExist(err) {
 		return false, ""
 	}
-	err = os.MkdirAll(path + "user", 0644)
+	err = os.MkdirAll(path+"user", 0644)
 	return err == nil, path
 }
 
@@ -38,4 +39,3 @@ func getLogDir() (string, error) {
 	path += "/log/" + dateString + "/"
 	return path, nil
 }
-

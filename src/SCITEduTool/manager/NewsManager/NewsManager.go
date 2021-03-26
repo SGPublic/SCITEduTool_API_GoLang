@@ -105,7 +105,7 @@ func GetHeadlines() (Headlines, StdOutUnit.MessagedError) {
 		StdOutUnit.Warn("", "数据库开始事务失败", err)
 		return Headlines{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	state, err := tx.Prepare("select `h_id`,`h_type_id`,`h_image`,`h_expired` from `news_headline`")
+	state, err := tx.Prepare("select `h_id`,`h_type_id`,`h_image`,`h_expired` from `news_headline` order by `h_id` desc")
 	if err != nil {
 		_ = tx.Rollback()
 		StdOutUnit.Warn("", "数据库准备SQL指令失败", err)

@@ -1,16 +1,11 @@
 package api
 
 import (
+	"SCITEduTool/consts"
 	"net/http"
 	"time"
 
 	"SCITEduTool/unit/StdOutUnit"
-)
-
-const (
-	Semester   = 2
-	SchoolYear = "2020-2021"
-	Evaluation = false
 )
 
 func Day(w http.ResponseWriter, r *http.Request) {
@@ -38,8 +33,8 @@ func Day(w http.ResponseWriter, r *http.Request) {
 		Message:    "success.",
 		DayCount:   int(left.Hours() / 24),
 		Date:       timeStart.In(time.Local).Format("2006/01/02"),
-		Semester:   Semester,
-		SchoolYear: SchoolYear,
-		Evaluation: Evaluation,
+		Semester:   consts.Semester,
+		SchoolYear: consts.SchoolYear,
+		Evaluation: consts.Evaluation,
 	})
 }

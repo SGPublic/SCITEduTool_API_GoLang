@@ -1,6 +1,7 @@
 package api
 
 import (
+	"SCITEduTool/consts"
 	"net/http"
 	"strconv"
 
@@ -13,8 +14,8 @@ import (
 func Achieve(w http.ResponseWriter, r *http.Request) {
 	base, errMessage := SetupAPI(w, r, map[string]string{
 		"access_token": "",
-		"semester":     strconv.Itoa(Semester),
-		"year":         SchoolYear,
+		"semester":     strconv.Itoa(consts.Semester),
+		"year":         consts.SchoolYear,
 	})
 	if errMessage.HasInfo {
 		errMessage.OutMessage(w)

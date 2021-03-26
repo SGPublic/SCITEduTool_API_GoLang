@@ -1,7 +1,7 @@
 /*
  Navicat MariaDB Data Transfer
 
- Source Server         : 本地
+ Source Server         : 深圳
  Source Server Type    : MariaDB
  Source Server Version : 50568
  Source Host           : localhost:3306
@@ -11,7 +11,7 @@
  Target Server Version : 50568
  File Encoding         : 65001
 
- Date: 13/03/2021 09:00:12
+ Date: 26/03/2021 16:27:30
 */
 
 SET NAMES utf8mb4;
@@ -63,18 +63,57 @@ DROP TABLE IF EXISTS `hitokoto`;
 CREATE TABLE `hitokoto`  (
   `h_id` int(11) NOT NULL AUTO_INCREMENT,
   `h_index` int(255) NOT NULL DEFAULT 0,
-  `h_content` varchar(1000) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `h_type` varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `h_from` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `h_from_who` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `h_creator` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `h_content` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `h_type` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `h_from` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `h_from_who` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `h_creator` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
   `h_creator_uid` int(11) NOT NULL DEFAULT 0,
   `h_reviewer` int(11) NOT NULL,
   `h_insert_at` int(11) NOT NULL,
   `h_length` int(11) NOT NULL,
+  PRIMARY KEY (`h_id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 360 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Compact;
+
+-- ----------------------------
+-- Table structure for news
+-- ----------------------------
+DROP TABLE IF EXISTS `news`;
+CREATE TABLE `news`  (
+  `n_id` int(11) NOT NULL,
+  `n_type_id` int(11) NOT NULL,
+  `n_title` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `n_summary` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `n_images` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `n_create_time` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`n_id`) USING BTREE,
+  UNIQUE INDEX `news`(`n_id`, `n_type_id`, `n_create_time`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Compact;
+
+-- ----------------------------
+-- Table structure for news_chart
+-- ----------------------------
+DROP TABLE IF EXISTS `news_chart`;
+CREATE TABLE `news_chart`  (
+  `n_type_id` int(11) NOT NULL,
+  `n_name` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `n_out` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`n_type_id`) USING BTREE,
+  UNIQUE INDEX `news_chart`(`n_type_id`, `n_name`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Compact;
+
+-- ----------------------------
+-- Table structure for news_headline
+-- ----------------------------
+DROP TABLE IF EXISTS `news_headline`;
+CREATE TABLE `news_headline`  (
+  `h_id` int(11) NOT NULL,
+  `h_type_id` int(11) NOT NULL,
+  `h_image` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `h_expired` int(11) NOT NULL,
   PRIMARY KEY (`h_id`) USING BTREE,
-  UNIQUE INDEX `hitokoto`(`h_index`, `h_type`, `h_insert_at`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Compact;
+  UNIQUE INDEX `news_headline`(`h_id`, `h_type_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Compact;
 
 -- ----------------------------
 -- Table structure for sign_keys

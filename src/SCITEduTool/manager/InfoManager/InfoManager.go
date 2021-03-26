@@ -18,6 +18,7 @@ type UserInfo struct {
 	Expired   bool
 	Name      string
 	Identify  int
+	Level     int
 	Grade     int
 	Faculty   int
 	Specialty int
@@ -30,7 +31,7 @@ func Get(username string) (UserInfo, StdOutUnit.MessagedError) {
 		StdOutUnit.Warn(username, "数据库开始事务失败", err)
 		return UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	state, err := tx.Prepare("select `u_name`,`u_identify`,`u_faculty`,`u_specialty`,`u_class`,`u_grade`,`u_info_expired` from `user_info` where `u_id`=?")
+	state, err := tx.Prepare("select `u_name`,`u_identify`,`u_level`,`u_faculty`,`u_specialty`,`u_class`,`u_grade`,`u_info_expired` from `user_info` where `u_id`=?")
 	if err != nil {
 		_ = tx.Rollback()
 		StdOutUnit.Warn(username, "数据库准备SQL指令失败", err)
@@ -40,7 +41,7 @@ func Get(username string) (UserInfo, StdOutUnit.MessagedError) {
 	info := UserInfo{}
 	var expired int64
 	name := sql.NullString{}
-	err = rows.Scan(&name, &info.Identify, &info.Faculty, &info.Specialty, &info.Class, &info.Grade, &expired)
+	err = rows.Scan(&name, &info.Identify, &info.Level, &info.Faculty, &info.Specialty, &info.Class, &info.Grade, &expired)
 	if err == nil {
 		tx.Commit()
 		info.Exist = true

@@ -15,7 +15,7 @@ type KeyResult struct {
 }
 
 func GetKey(w http.ResponseWriter, _ *http.Request) {
-	keyResult := KeyResult {
+	keyResult := KeyResult{
 		Code:    200,
 		Message: "success.",
 		Hash:    GetRandomString(8),

@@ -2,18 +2,18 @@ package TableModule
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 
+	"SCITEduTool/manager/ChartManager"
 	"SCITEduTool/manager/InfoManager"
 	"SCITEduTool/manager/TableManager"
 	"SCITEduTool/module/InfoModule"
 	"SCITEduTool/module/SessionModule"
 	"SCITEduTool/unit/StdOutUnit"
+	"github.com/PuerkitoBio/goquery"
 )
 
 func Get(username string, year string, semester int) (TableManager.TableObject, StdOutUnit.MessagedError) {
@@ -62,7 +62,6 @@ func Refresh(username string, info InfoManager.UserInfo, year string, semester i
 }
 
 func studentTable(username string, info InfoManager.UserInfo, year string, semester int, session string) (TableManager.TableObject, StdOutUnit.MessagedError) {
-	tableId := TableManager.GetTableId(info.Specialty, info.Grade, info.Class, year, semester)
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -78,15 +77,17 @@ func studentTable(username string, info InfoManager.UserInfo, year string, semes
 		StdOutUnit.Error(username, "网络请求失败", err)
 		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	resp.Body.Close()
-	r, _ := regexp.Compile("__VIEWSTATE\" value=\"(.*?)\"")
-	viewState := r.FindString(string(body))
+	if err != nil {
+		StdOutUnit.Error("", "HTML解析失败", err)
+		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	viewState := doc.Find("#__VIEWSTATE").AttrOr("value", "")
 	if viewState == "" {
 		StdOutUnit.Error(username, "未发现 __VIEWSTATE", nil)
 		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	viewState = viewState[20 : len(viewState)-1]
 
 	form := url.Values{}
 	form.Set("__EVENTTARGET", "zy")
@@ -110,19 +111,41 @@ func studentTable(username string, info InfoManager.UserInfo, year string, semes
 		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
-	body, err = ioutil.ReadAll(resp.Body)
+	doc, err = goquery.NewDocumentFromReader(resp.Body)
 	resp.Body.Close()
-	r, _ = regexp.Compile("selected=\"selected\" value=\"" + tableId + "\"")
-	if r.MatchString(string(body)) {
+	if err != nil {
+		StdOutUnit.Error("", "HTML解析失败", err)
+		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	className, errMessage := ChartManager.GetClassName(info.Faculty, info.Specialty, info.Class)
+	if errMessage.HasInfo {
+		return TableManager.TableObject{}, errMessage
+	}
+	tableId := ""
+	selected := false
+	doc.Find("#kb").Find("option").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		if s.Text() == className {
+			tableId = s.AttrOr("value", "")
+			if s.AttrOr("selected", "nil") == "selected" {
+				selected = true
+			}
+			return false
+		} else {
+			return true
+		}
+	})
+	if tableId == "" {
+		StdOutUnit.Error("", "tableId获取失败", err)
+		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	if selected {
 		goto parse
 	}
-	r, _ = regexp.Compile("__VIEWSTATE\" value=\"(.*?)\"")
-	viewState = r.FindString(string(body))
+	viewState = doc.Find("#__VIEWSTATE").AttrOr("value", "")
 	if viewState == "" {
 		StdOutUnit.Error(username, "未发现 __VIEWSTATE", nil)
 		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	viewState = viewState[20 : len(viewState)-1]
 
 	form = url.Values{}
 	form.Set("__EVENTTARGET", "kb")
@@ -146,63 +169,70 @@ func studentTable(username string, info InfoManager.UserInfo, year string, semes
 		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
-	body, err = ioutil.ReadAll(resp.Body)
+	doc, err = goquery.NewDocumentFromReader(resp.Body)
 	resp.Body.Close()
-	r, _ = regexp.Compile("__VIEWSTATE\" value=\"(.*?)\"")
-	viewState = r.FindString(string(body))
+	if err != nil {
+		StdOutUnit.Error("", "HTML解析失败", err)
+		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	viewState = doc.Find("#__VIEWSTATE").AttrOr("value", "")
 	if viewState == "" {
 		StdOutUnit.Error(username, "未发现 __VIEWSTATE", nil)
 		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	r, _ = regexp.Compile("selected=\"selected\" value=\"" + tableId + "\"")
-	if !r.MatchString(string(body)) {
-		StdOutUnit.Error(username, "无法选中目标课表数据", nil)
+	selected = false
+	doc.Find("#kb").Find("option").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		if s.Text() == className {
+			if s.AttrOr("selected", "nil") == "selected" {
+				selected = true
+			}
+			return false
+		} else {
+			return true
+		}
+	})
+	if !selected {
+		StdOutUnit.Error("", "无法选中目标课表数据", err)
 		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
 parse:
-	bodyString := string(body)
-	bodyString = strings.ReplaceAll(bodyString, "（", "(")
-	bodyString = strings.ReplaceAll(bodyString, "）", ")")
-
-	matchesClass := strings.Split(bodyString, "<tr>")
-
 	tableObject := TableManager.TableObject{}
 	resultCount := 0
-	dayFault := []int{0, 1, 0, 1, 0}
-	for class := 1; class < 6; class++ {
-		matchesDay := strings.Split(matchesClass[class*2+1], "</td>")
-		for day := 2; day < 8; day++ {
+	//dayFault := []int{0, 1, 0, 1, 0}
+	hasError := false
+	doc.Find("#Table6").Find("tbody").Find("tr").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		s.Find("td").EachWithBreak(func(i1 int, s1 *goquery.Selection) bool {
 			lesson := TableManager.LessonItem{
 				Data: []TableManager.LessonSingleItem{},
 			}
-			dayClassString := matchesDay[day-dayFault[class-1]]
-			if dayClassString == "<td align=\"Center\">&nbsp;" || dayClassString == "<td align=\"Center\" width=\"7%\">&nbsp;" {
-				tableObject.Object[day-2][class-1] = lesson
-				continue
+			html, err := s1.Html()
+			html = strings.ReplaceAll(html, "\n", "")
+			if err != nil || html == " " {
+				return !hasError
 			}
-			dayClassData := strings.Split(dayClassString, "<br>")
-			dayClassDataCount := (len(dayClassData) + 1) / 7
-			for count := 0; count < dayClassDataCount; count++ {
+			if s1.AttrOr("rowspan", "0") != "2" ||
+				len(strings.Split(html, "<br/>")) <= 1 {
+				return !hasError
+			}
+			dayClassData := strings.Split(html, "<br/><br/><br/>")
+			for _, data := range dayClassData {
+				singleData := strings.Split(data, "<br/>")
 				dataItem := TableManager.LessonSingleItem{}
-				classIndex := count * 7
-				if count == 0 {
-					dataItem.Name = strings.Split(dayClassData[classIndex], ">")[1]
-				} else {
-					dataItem.Name = dayClassData[classIndex]
-				}
-				stringClass := dayClassData[classIndex+1]
-				stringClass = stringClass[0:strings.Index(stringClass, "(")]
+				dataItem.Name = singleData[0]
+				stringClass := singleData[1]
+				stringClass = stringClass[:strings.Index(stringClass, "(")]
 				stringClass = strings.ReplaceAll(stringClass, "单", "")
 				stringClass = strings.ReplaceAll(stringClass, "双", "")
+				StdOutUnit.Debug("", strconv.Itoa(i1-1-i/2%2)+", "+strconv.Itoa(i/2-1)+": "+stringClass, nil)
 				var rangeArray []string
 				if strings.Contains(stringClass, ",") {
 					rangeArray = strings.Split(stringClass, ",")
 				} else {
 					rangeArray = []string{stringClass}
 				}
-				weekRange0 := strings.Contains(dayClassData[classIndex+1], "双")
-				weekRange1 := strings.Contains(dayClassData[classIndex+1], "单")
+				weekRange0 := strings.Contains(singleData[1], "双")
+				weekRange1 := strings.Contains(singleData[1], "单")
 
 				for _, item := range rangeArray {
 					var localRange []string
@@ -214,32 +244,47 @@ parse:
 					start, err := strconv.Atoi(localRange[0])
 					if err != nil {
 						StdOutUnit.Error(username, "课表解析失败", err)
-						return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+						hasError = true
+						return !hasError
 					}
 					end, err := strconv.Atoi(localRange[1])
 					if err != nil {
 						StdOutUnit.Error(username, "课表解析失败", err)
-						return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+						return !hasError
 					}
-					for index := start; index < end; index++ {
+					for index := start; index <= end; index++ {
 						if (!weekRange0 && index/2*2 != index) || (!weekRange1 && index/2*2 == index) {
 							dataItem.Range = append(dataItem.Range, index)
 						}
 					}
 				}
-				dataItem.Teacher = strings.ReplaceAll(dayClassData[classIndex+2], "\n", "")
-				dataItem.Room = dayClassData[classIndex+3]
+				dataItem.Teacher = strings.ReplaceAll(singleData[2], "\n", "")
+				dataItem.Room = singleData[3]
 				lesson.Data = append(lesson.Data, dataItem)
 			}
 			resultCount++
-			tableObject.Object[day-2][class-1] = lesson
+			tableObject.Object[i1-1-i/2%2][i/2-1] = lesson
+			return true
+		})
+		return true
+	})
+	for dayIndex, day := range tableObject.Object {
+		for classIndex, class := range day {
+			if class.Data != nil {
+				continue
+			}
+			tableObject.Object[dayIndex][classIndex] = TableManager.LessonItem{
+				Data: []TableManager.LessonSingleItem{},
+			}
 		}
 	}
-	if resultCount == 0 {
+	if hasError {
+		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	} else if resultCount == 0 {
 		StdOutUnit.Error(username, "课表数据为空", nil)
 		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	TableManager.Update(username, info, year, semester, tableObject)
+	TableManager.Update(username, info, year, semester, tableId, tableObject)
 	return tableObject, StdOutUnit.GetEmptyErrorMessage()
 }
 

@@ -3,7 +3,6 @@ package TableManager
 import (
 	"database/sql"
 	"encoding/json"
-	"strconv"
 	"time"
 
 	"SCITEduTool/manager/InfoManager"
@@ -33,19 +32,18 @@ type TableContent struct {
 }
 
 func Get(username string, info InfoManager.UserInfo, year string, semester int) (TableContent, StdOutUnit.MessagedError) {
-	tableId := GetTableId(info.Specialty, info.Grade, info.Class, year, semester)
 	tx, err := SQLStaticUnit.Maria.Begin()
 	if err != nil {
 		StdOutUnit.Warn(username, "数据库开始事务失败", err)
 		return TableContent{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	state, err := tx.Prepare("select `t_content`,`t_expired` from `class_schedule` where `t_id`=?")
+	state, err := tx.Prepare("select `t_content`,`t_expired` from `class_schedule` where `t_faculty`=? and `t_specialty`=? and `t_class`=? and `t_school_year`=? and `t_semester`=?")
 	if err != nil {
 		_ = tx.Rollback()
 		StdOutUnit.Warn(username, "数据库准备SQL指令失败", err)
 		return TableContent{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
-	rows := state.QueryRow(tableId)
+	rows := state.QueryRow(info.Faculty, info.Specialty, info.Class, year, semester)
 	table := TableContent{}
 	var expired int64
 	err = rows.Scan(&table.Table, &expired)
@@ -65,8 +63,7 @@ func Get(username string, info InfoManager.UserInfo, year string, semester int) 
 	}
 }
 
-func Update(username string, info InfoManager.UserInfo, year string, semester int, table TableObject) StdOutUnit.MessagedError {
-	tableId := GetTableId(info.Specialty, info.Grade, info.Class, year, semester)
+func Update(username string, info InfoManager.UserInfo, year string, semester int, tableId string, table TableObject) StdOutUnit.MessagedError {
 	tableContent, err := json.Marshal(table)
 	if err != nil {
 		StdOutUnit.Warn(username, "数据库开始事务失败", err)
@@ -98,7 +95,7 @@ func Update(username string, info InfoManager.UserInfo, year string, semester in
 		_, err = state.Exec(tableId, info.Faculty, info.Specialty, info.Class, info.Grade, year, semester, tableString,
 			time.Now().Unix()+1296000)
 	} else {
-		_, err = state.Exec(tableId, tableString, time.Now().Unix()+1296000, username)
+		_, err = state.Exec(tableString, time.Now().Unix()+1296000, tableId)
 	}
 	if err != nil {
 		_ = tx.Rollback()
@@ -112,13 +109,6 @@ func Update(username string, info InfoManager.UserInfo, year string, semester in
 		StdOutUnit.Verbose(username, "向数据库更新课表数据成功")
 	}
 	return StdOutUnit.GetEmptyErrorMessage()
-}
-
-func GetTableId(specialty int, grade int, class int, year string, semester int) string {
-	classId := "0" + strconv.Itoa(class)
-	classId = classId[len(classId)-2:]
-	return strconv.Itoa(grade) + strconv.Itoa(specialty) + year + strconv.Itoa(semester) +
-		strconv.Itoa(grade)[2:] + strconv.Itoa(specialty) + classId
 }
 
 func CheckTableExist(username string, tableId string) (bool, StdOutUnit.MessagedError) {
