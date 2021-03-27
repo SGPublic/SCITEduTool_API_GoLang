@@ -6,7 +6,6 @@ import (
 
 	"SCITEduTool/manager/NewsManager"
 	"SCITEduTool/module/NewsModule"
-	"SCITEduTool/unit/StdOutUnit"
 )
 
 func News(w http.ResponseWriter, r *http.Request) {
@@ -63,13 +62,13 @@ func List(w http.ResponseWriter, api BaseAPI) {
 	tidPre := api.GetParameter("tid")
 	tid, err := strconv.Atoi(tidPre)
 	if err != nil || tid < 0 {
-		StdOutUnit.GetErrorMessage(-500, "无效的参数").OutMessage(w)
+		api.OnStandardMessage(-500, "无效的参数")
 		return
 	}
 	pagePre := api.GetParameter("page")
 	page, err := strconv.Atoi(pagePre)
 	if err != nil || page < 0 {
-		StdOutUnit.GetErrorMessage(-500, "无效的参数").OutMessage(w)
+		api.OnStandardMessage(-500, "无效的参数")
 		return
 	}
 	news, hasNext, errMessage := NewsModule.ListNewsByType(tid, page)

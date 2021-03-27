@@ -10,9 +10,10 @@ import (
 )
 
 type BaseAPI struct {
-	parameter      map[string]string
-	OnObjectResult func(object interface{})
-	GetParameter   func(key string) string
+	parameter         map[string]string
+	OnObjectResult    func(object interface{})
+	OnStandardMessage func(code int, message string)
+	GetParameter      func(key string) string
 }
 
 func SetupAPI(w http.ResponseWriter, r *http.Request, parameterGet map[string]string) (BaseAPI, StdOutUnit.MessagedError) {
@@ -41,6 +42,15 @@ func SetupAPI(w http.ResponseWriter, r *http.Request, parameterGet map[string]st
 		},
 		GetParameter: func(key string) string {
 			return parameter[key]
+		},
+		OnStandardMessage: func(code int, message string) {
+			StdOutUnit.OnObjectResult(w, struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			}{
+				Code:    code,
+				Message: message,
+			})
 		},
 	}, StdOutUnit.GetEmptyErrorMessage()
 }

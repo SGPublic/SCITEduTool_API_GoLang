@@ -33,7 +33,7 @@ func Table(w http.ResponseWriter, r *http.Request) {
 	semester, err := strconv.Atoi(base.GetParameter("semester"))
 	if err != nil {
 		StdOutUnit.Info(username, "学期参数解析失败")
-		StdOutUnit.GetErrorMessage(-500, "请求处理出错").OutMessage(w)
+		base.OnStandardMessage(-500, "请求处理出错")
 		return
 	}
 	year := base.GetParameter("year")

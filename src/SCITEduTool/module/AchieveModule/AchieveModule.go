@@ -1,7 +1,10 @@
 package AchieveModule
 
 import (
+	"SCITEduTool/manager/SignManager"
 	"archive/zip"
+	"crypto/md5"
+	"encoding/hex"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -75,12 +78,6 @@ func ExtractPrepare(info ExtractTaskInfo) (TaskStatus, StdOutUnit.MessagedError)
 	_, err = os.Stat(extractPath)
 	if err != nil {
 		_ = os.MkdirAll(extractPath, 0644)
-		//if err == os.ErrNotExist {
-		//	_ = os.MkdirAll(extractPath, 0644)
-		//} else {
-		//	StdOutUnit.Warn("", "导出预备目录获取失败", err)
-		//	return status, StdOutUnit.GetErrorMessage(-500, "请求处理失败")
-		//}
 	} else if info.TaskID < 0 {
 		return status, StdOutUnit.GetErrorMessage(-500, "短时间内请勿多次创建导出任务")
 	}
@@ -187,7 +184,7 @@ func ExtractFinal(info ExtractTaskInfo) StdOutUnit.MessagedError {
 		}
 		singleFile.Close()
 	}
-	extract.Close()
+	_ = extract.Close()
 	zipFile.Close()
 	file.Close()
 	err = os.Rename(extractPath+"extract_"+strconv.Itoa(info.TaskID)+".zip.prepare", extractPath+"extract_"+strconv.Itoa(info.TaskID)+".zip")
@@ -195,6 +192,23 @@ func ExtractFinal(info ExtractTaskInfo) StdOutUnit.MessagedError {
 		StdOutUnit.Warn("", "成绩单读取失败", err)
 	}
 	return StdOutUnit.GetEmptyErrorMessage()
+}
+
+func ExtractLink(info ExtractTaskInfo, accessToken string) string {
+	appSecret := SignManager.GetDefaultAppSecretByPlatform("web")
+	arg := "access_token=" + accessToken + "&task_id=" +
+		strconv.Itoa(info.TaskID) + "&ts=" + strconv.Itoa(info.TaskID*300)
+	h := md5.New()
+	h.Write([]byte(arg + appSecret))
+	sign := hex.EncodeToString(h.Sum(nil))
+	arg += "&sign=" + sign
+	link := ""
+	if LocalDebug.IsDebug() {
+		link = "http://localhost:8000/achieve/extract/download?"
+	} else {
+		link = "https://tool.eclass.sgpublic.xyz/achieve/extract/download?"
+	}
+	return link + arg
 }
 
 func Get(username string, year string, semester int) (AchieveManager.AchieveObject,
