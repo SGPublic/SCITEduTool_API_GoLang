@@ -19,7 +19,7 @@ func InsertParameter(request *http.Request, parameter map[string]string) (map[st
 		parameter["ts"] = ""
 		parameter["sign"] = ""
 		parameter["platform"] = "web"
-		parameter["app_key"] = SignManager.GetDefaultAppSecretByPlatform("web")
+		parameter["app_key"] = SignManager.GetDefaultAppKey()
 	}
 	parString := ""
 	var parameterKeys []string

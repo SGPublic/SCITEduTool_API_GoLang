@@ -17,6 +17,8 @@ type InfoOut struct {
 
 type InfoOutContent struct {
 	Name      string `json:"name"`
+	Identify  int    `json:"identify"`
+	Level     int    `json:"level"`
 	Faculty   string `json:"faculty"`
 	Specialty string `json:"specialty"`
 	Class     string `json:"class"`
@@ -66,6 +68,8 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		Message: "success.",
 		Info: InfoOutContent{
 			Name:      info.Name,
+			Identify:  info.Identify,
+			Level:     info.Level,
 			Faculty:   faculty,
 			Specialty: specialty,
 			Class:     class,
