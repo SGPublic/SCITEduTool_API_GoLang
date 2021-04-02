@@ -79,6 +79,10 @@ func Extract(w http.ResponseWriter, r *http.Request) {
 		Semester:    semester,
 		TargetTasks: tasks,
 	})
+	if errMessage.HasInfo {
+		errMessage.OutMessage(w)
+		return
+	}
 	base.OnObjectResult(struct {
 		Code    int                      `json:"code"`
 		Message string                   `json:"message"`
@@ -205,10 +209,13 @@ func ExtractDownload(w http.ResponseWriter, r *http.Request) {
 		base.OnStandardMessage(-500, "请求处理失败")
 		return
 	}
+	//StdOutUnit.Warn(username, extractPath + "extract_" + strconv.Itoa(taskId) + ".zip", nil)
 	data, err := ioutil.ReadFile(extractPath + "extract_" + strconv.Itoa(taskId) + ".zip")
 	if err != nil {
 		base.OnStandardMessage(-500, "请求处理失败")
 		return
 	}
+	w.Header().Set("Content-Type", "application/x-zip-compressed")
+	w.Header().Set("Content-Disposition", "attachment;filename=extract_"+strconv.Itoa(taskId)+".zip")
 	_, _ = w.Write(data)
 }

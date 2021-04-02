@@ -53,6 +53,8 @@ func InsertParameter(request *http.Request, parameter map[string]string) (map[st
 	}
 	appSecret := SignManager.GetAppSecretByAppKey(parameter["app_key"], parameter["platform"])
 	if appSecret == "" {
+		StdOutUnit.Debug("", parameter["app_key"], nil)
+		StdOutUnit.Debug("", parameter["platform"], nil)
 		return nil, false, StdOutUnit.GetErrorMessage(-403, "应用密钥不存在")
 	}
 

@@ -16,6 +16,7 @@
         <method importPath="io" receiver="ReadCloser" name="Close" />
         <method importPath="database/sql" receiver="*Tx" name="Commit" />
         <method importPath="os" receiver="*File" name="Close" />
+        <method importPath="archive/zip" receiver="*Writer" name="Close" />
       </methods>
     </inspection_tool>
   </profile>

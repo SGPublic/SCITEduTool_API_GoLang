@@ -162,41 +162,48 @@ func studentInfo(username string, session string) (InfoManager.UserInfo, StdOutU
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 
-	form := url.Values{}
-	form.Set("__EVENTTARGET", "xq")
-	form.Set("__EVENTARGUMENT", "")
-	form.Set("__LASTFOCUS", "")
-	form.Set("__VIEWSTATE", viewState)
-	form.Set("__VIEWSTATEGENERATOR", "3189F21D")
-	form.Set("xn", consts.SchoolYear)
-	form.Set("xq", "1")
-	form.Set("nj", gradePre)
-	form.Set("xy", strconv.Itoa(lblXyId))
-	req, _ = http.NewRequest("POST", urlString, strings.NewReader(strings.TrimSpace(form.Encode())))
-	req.AddCookie(&http.Cookie{Name: "ASP.NET_SessionId", Value: session})
-	req.Header.Add("Referer", urlString)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err = client.Do(req)
-	if err != nil {
-		StdOutUnit.Error(username, "网络请求失败", err)
-		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
-
-	doc, err = goquery.NewDocumentFromReader(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		StdOutUnit.Error("", "HTML解析失败", err)
-		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	}
-
+	yearStart, _ := strconv.Atoi(strings.Split(consts.SchoolYear, "-")[0])
 	lblZymcId := -1
-	doc.Find("#zy").Find("option").EachWithBreak(func(i int, s *goquery.Selection) bool {
-		if s.Text() == lblZymc {
-			lblZymcId, _ = strconv.Atoi(s.AttrOr("value", "-1"))
-			return false
+	for i := 0; i > -6; i-- {
+		year := strconv.Itoa(yearStart+i) + "-" + strconv.Itoa(yearStart+1+i)
+		form := url.Values{}
+		form.Set("__EVENTTARGET", "xq")
+		form.Set("__EVENTARGUMENT", "")
+		form.Set("__LASTFOCUS", "")
+		form.Set("__VIEWSTATE", viewState)
+		form.Set("__VIEWSTATEGENERATOR", "3189F21D")
+		form.Set("xn", year)
+		form.Set("xq", "1")
+		form.Set("nj", gradePre)
+		form.Set("xy", strconv.Itoa(lblXyId))
+		req, _ = http.NewRequest("POST", urlString, strings.NewReader(strings.TrimSpace(form.Encode())))
+		req.AddCookie(&http.Cookie{Name: "ASP.NET_SessionId", Value: session})
+		req.Header.Add("Referer", urlString)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err = client.Do(req)
+		if err != nil {
+			StdOutUnit.Error(username, "网络请求失败", err)
+			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 		}
-		return true
-	})
+
+		doc, err = goquery.NewDocumentFromReader(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			StdOutUnit.Error("", "HTML解析失败", err)
+			return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+		}
+
+		doc.Find("#zy").Find("option").EachWithBreak(func(i int, s *goquery.Selection) bool {
+			if s.Text() == lblZymc {
+				lblZymcId, _ = strconv.Atoi(s.AttrOr("value", "-1"))
+				return false
+			}
+			return true
+		})
+		if lblZymcId != -1 {
+			break
+		}
+	}
 	if lblZymcId == -1 {
 		StdOutUnit.Error(username, "专业ID获取失败", nil)
 		return InfoManager.UserInfo{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")

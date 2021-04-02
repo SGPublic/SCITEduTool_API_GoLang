@@ -2,10 +2,9 @@ package AchieveModule
 
 import (
 	"SCITEduTool/manager/SignManager"
-	"archive/zip"
+	"SCITEduTool/unit/ZipUtil"
 	"crypto/md5"
 	"encoding/hex"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -134,59 +133,8 @@ func ExtractFinal(info ExtractTaskInfo) StdOutUnit.MessagedError {
 		StdOutUnit.Warn("", "导出预备目录获取失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理失败")
 	}
-	file, err := os.Open(extractPath)
-	if err != nil {
-		StdOutUnit.Warn("", "导出预备目录获取失败", err)
-		return StdOutUnit.GetErrorMessage(-500, "请求处理失败")
-	}
 
-	zipFile, _ := os.Create(extractPath + "extract_" + strconv.Itoa(info.TaskID) + ".zip.prepare")
-	extract := zip.NewWriter(zipFile)
-	dirInside, err := file.ReadDir(-1)
-	if err != nil {
-		StdOutUnit.Warn("", "导出预备目录获取失败", err)
-		return StdOutUnit.GetErrorMessage(-500, "请求处理失败")
-	}
-	for _, dirIndex := range dirInside {
-		StdOutUnit.Debug(info.Username, dirIndex.Name(), nil)
-		//if dirIndex.IsDir() {
-		//	continue
-		//}
-		var singleFile *os.File
-		if LocalDebug.IsDebug() {
-			singleFile, err = os.Open(extractPath + "prepare\\" + dirIndex.Name())
-		} else {
-			singleFile, err = os.Open(extractPath + "prepare/" + dirIndex.Name())
-		}
-		if err != nil {
-			StdOutUnit.Warn("", "成绩单读取失败", err)
-			continue
-		}
-		info, err := singleFile.Stat()
-		if err != nil {
-			StdOutUnit.Warn("", "成绩单读取失败", err)
-			continue
-		}
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			StdOutUnit.Warn("", "成绩单读取失败", err)
-			continue
-		}
-		header.Method = zip.Store
-		writer, err := extract.CreateHeader(header)
-		if err != nil {
-			StdOutUnit.Warn("", "成绩单读取失败", err)
-			continue
-		}
-		_, err = io.Copy(writer, singleFile)
-		if err != nil {
-			StdOutUnit.Warn("", "成绩单读取失败", err)
-		}
-		singleFile.Close()
-	}
-	_ = extract.Close()
-	zipFile.Close()
-	file.Close()
+	ZipUtil.Zip(extractPath+"prepare", extractPath+"extract_"+strconv.Itoa(info.TaskID)+".zip.prepare")
 	err = os.Rename(extractPath+"extract_"+strconv.Itoa(info.TaskID)+".zip.prepare", extractPath+"extract_"+strconv.Itoa(info.TaskID)+".zip")
 	if err != nil {
 		StdOutUnit.Warn("", "成绩单读取失败", err)
@@ -204,9 +152,9 @@ func ExtractLink(info ExtractTaskInfo, accessToken string) string {
 	arg += "&sign=" + sign
 	link := ""
 	if LocalDebug.IsDebug() {
-		link = "http://localhost:8000/achieve/extract/download?"
+		link = "http://localhost:8000/api/achieve/extract/download?"
 	} else {
-		link = "https://tool.eclass.sgpublic.xyz/achieve/extract/download?"
+		link = "https://tool.eclass.sgpublic.xyz/api/achieve/extract/download?"
 	}
 	return link + arg
 }

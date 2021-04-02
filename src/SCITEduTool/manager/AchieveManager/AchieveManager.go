@@ -69,6 +69,7 @@ func Get(username string, year string, semester int) (TableExtractInfo, StdOutUn
 	info := InfoManager.UserInfo{}
 	err = rows.Scan(&info.Faculty, &info.Specialty, &info.Class, &info.Name)
 	if err != nil {
+		_ = tx.Rollback()
 		StdOutUnit.Warn(username, "数据库执行指令失败", err)
 		return TableExtractInfo{
 			ErrorInfo: "用户信息不存在",
@@ -76,11 +77,13 @@ func Get(username string, year string, semester int) (TableExtractInfo, StdOutUn
 	}
 	baseDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
+		_ = tx.Rollback()
 		StdOutUnit.Warn("", "运行目录获取失败", err)
 		return TableExtractInfo{
 			ErrorInfo: "服务器内部错误",
 		}, StdOutUnit.GetErrorMessage(-500, "请求处理失败")
 	}
+	tx.Commit()
 	baseDir += "/achieve"
 	tableDir := baseDir + "/user/" + year + "/" + strconv.Itoa(semester) + "/" + strconv.Itoa(info.Faculty) + "/" + strconv.Itoa(info.Specialty) +
 		"/" + strconv.Itoa(info.Class) + "/"
@@ -141,7 +144,11 @@ func Update(username string, info InfoManager.UserInfo, year string, semester in
 		return StdOutUnit.GetErrorMessage(-500, "请求处理失败")
 	}
 	baseDir += "/achieve"
-	tableDir := baseDir + "/user/" + year + "/" + strconv.Itoa(semester) + "/" + strconv.Itoa(info.Faculty) + "/" + strconv.Itoa(info.Specialty) +
+	tableDir := baseDir + "/user/" + year
+	if year != "all" {
+		tableDir += "/" + strconv.Itoa(semester)
+	}
+	tableDir += "/" + strconv.Itoa(info.Faculty) + "/" + strconv.Itoa(info.Specialty) +
 		"/" + strconv.Itoa(info.Class) + "/"
 	_, err = os.Stat(tableDir)
 
