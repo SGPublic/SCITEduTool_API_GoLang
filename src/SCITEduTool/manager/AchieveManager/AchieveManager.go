@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/manager/ChartManager"
 	"SCITEduTool/manager/InfoManager"
 	"SCITEduTool/unit/SQLStaticUnit"
@@ -210,18 +209,18 @@ checkExtractTime:
 startExtract:
 	tableDir += username + ".xlsx"
 	_ = os.Remove(tableDir)
-	if LocalDebug.IsDebug() {
-		sample, err = os.Open(baseDir + "\\achieve_sample.xlsx")
-	} else {
-		sample, err = os.Open(baseDir + "/achieve_sample.xlsx")
-	}
+	//IF DEBUG
+	//	sample, err = os.Open(baseDir + "\\achieve_sample.xlsx")
+	//ELSE IF
+	sample, err = os.Open(baseDir + "/achieve_sample.xlsx")
+	//}
 	if err != nil {
 		StdOutUnit.Warn("", "成绩单样本文件获取失败", err)
 		return StdOutUnit.GetErrorMessage(-500, "请求处理失败")
 	}
-	if LocalDebug.IsDebug() {
-		tableDir = strings.ReplaceAll(tableDir, "/", "\\")
-	}
+	//IF DEBUG
+	//	tableDir = strings.ReplaceAll(tableDir, "/", "\\")
+	//ENDIF
 	target, err = os.OpenFile(tableDir, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		StdOutUnit.Warn("", "成绩单创建失败", err)

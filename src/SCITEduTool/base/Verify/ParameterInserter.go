@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"sort"
 
-	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/manager/SignManager"
 	"SCITEduTool/unit/StdOutUnit"
 )
@@ -15,12 +14,12 @@ func InsertParameter(request *http.Request, parameter map[string]string) (map[st
 	if parameter == nil {
 		parameter = make(map[string]string)
 	}
-	if !LocalDebug.IsDebug() {
-		parameter["ts"] = ""
-		parameter["sign"] = ""
-		parameter["platform"] = "web"
-		parameter["app_key"] = SignManager.GetDefaultAppKey()
-	}
+	//IF !DEBUG
+	parameter["ts"] = ""
+	parameter["sign"] = ""
+	parameter["platform"] = "web"
+	parameter["app_key"] = SignManager.GetDefaultAppKey()
+	//ENDIF
 	parString := ""
 	var parameterKeys []string
 	for key := range parameter {
@@ -48,9 +47,9 @@ func InsertParameter(request *http.Request, parameter map[string]string) (map[st
 		}
 	}
 
-	if LocalDebug.IsDebug() {
-		return parameter, true, StdOutUnit.GetEmptyErrorMessage()
-	}
+	//IF DEBUG
+	//	return parameter, true, StdOutUnit.GetEmptyErrorMessage()
+	//ENDIF
 	appSecret := SignManager.GetAppSecretByAppKey(parameter["app_key"], parameter["platform"])
 	if appSecret == "" {
 		StdOutUnit.Debug("", parameter["app_key"], nil)

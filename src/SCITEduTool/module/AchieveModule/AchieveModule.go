@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/manager/AchieveManager"
 	"SCITEduTool/manager/InfoManager"
 	"SCITEduTool/module/InfoModule"
@@ -71,9 +70,9 @@ func ExtractPrepare(info ExtractTaskInfo) (TaskStatus, StdOutUnit.MessagedError)
 		return status, StdOutUnit.GetErrorMessage(-500, "请求处理失败")
 	}
 	extractPath += "/achieve/extract/" + strconv.Itoa(status.TaskID) + "/" + info.Username + "/prepare/"
-	if LocalDebug.IsDebug() {
-		extractPath = strings.ReplaceAll(extractPath, "/", "\\")
-	}
+	//IF DEBUG
+	//	extractPath = strings.ReplaceAll(extractPath, "/", "\\")
+	//ENDIF
 	_, err = os.Stat(extractPath)
 	if err != nil {
 		_ = os.MkdirAll(extractPath, 0644)
@@ -125,9 +124,9 @@ func ExtractFinal(info ExtractTaskInfo) StdOutUnit.MessagedError {
 		return StdOutUnit.GetErrorMessage(-500, "请求处理失败")
 	}
 	extractPath += "/achieve/extract/" + strconv.Itoa(info.TaskID) + "/" + info.Username + "/"
-	if LocalDebug.IsDebug() {
-		extractPath = strings.ReplaceAll(extractPath, "/", "\\")
-	}
+	//IF DEBUG
+	//	extractPath = strings.ReplaceAll(extractPath, "/", "\\")
+	//ENDIF
 	_, err = os.Stat(extractPath)
 	if err != nil {
 		StdOutUnit.Warn("", "导出预备目录获取失败", err)
@@ -151,11 +150,11 @@ func ExtractLink(info ExtractTaskInfo, accessToken string) string {
 	sign := hex.EncodeToString(h.Sum(nil))
 	arg += "&sign=" + sign
 	link := ""
-	if LocalDebug.IsDebug() {
-		link = "http://localhost:8000/api/achieve/extract/download?"
-	} else {
-		link = "https://tool.eclass.sgpublic.xyz/api/achieve/extract/download?"
-	}
+	//IF DEBUG
+	//	link = "http://localhost:8000/api/achieve/extract/download?"
+	//ELSE IF
+	link = "https://tool.eclass.sgpublic.xyz/api/achieve/extract/download?"
+	//ENDIF
 	return link + arg
 }
 

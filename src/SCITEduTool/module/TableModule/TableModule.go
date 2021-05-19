@@ -201,17 +201,17 @@ parse:
 	resultCount := 0
 	//dayFault := []int{0, 1, 0, 1, 0}
 	hasError := false
-	doc.Find("#Table6").Find("tbody").Find("tr").EachWithBreak(func(i int, s *goquery.Selection) bool {
-		s.Find("td").EachWithBreak(func(i1 int, s1 *goquery.Selection) bool {
+	doc.Find("#Table6").Find("tbody").Find("tr").EachWithBreak(func(trIndex int, tr *goquery.Selection) bool {
+		tr.Find("td").EachWithBreak(func(tdIndex int, td *goquery.Selection) bool {
 			lesson := TableManager.LessonItem{
 				Data: []TableManager.LessonSingleItem{},
 			}
-			html, err := s1.Html()
+			html, err := td.Html()
 			html = strings.ReplaceAll(html, "\n", "")
 			if err != nil || html == " " {
 				return !hasError
 			}
-			if s1.AttrOr("rowspan", "0") != "2" ||
+			if td.AttrOr("rowspan", "0") != "2" ||
 				len(strings.Split(html, "<br/>")) <= 1 {
 				return !hasError
 			}
@@ -224,7 +224,7 @@ parse:
 				stringClass = stringClass[:strings.Index(stringClass, "(")]
 				stringClass = strings.ReplaceAll(stringClass, "单", "")
 				stringClass = strings.ReplaceAll(stringClass, "双", "")
-				StdOutUnit.Debug("", strconv.Itoa(i1-1-i/2%2)+", "+strconv.Itoa(i/2-1)+": "+stringClass, nil)
+				StdOutUnit.Debug("", strconv.Itoa(tdIndex-1-trIndex/2%2)+", "+strconv.Itoa(trIndex/2-1)+": "+stringClass, nil)
 				var rangeArray []string
 				if strings.Contains(stringClass, ",") {
 					rangeArray = strings.Split(stringClass, ",")
@@ -263,11 +263,24 @@ parse:
 				lesson.Data = append(lesson.Data, dataItem)
 			}
 			resultCount++
-			tableObject.Object[i1-1-i/2%2][i/2-1] = lesson
+			if (tdIndex-1-trIndex/2%2) >= 7 || (trIndex/2-1) >= 5 {
+				hasError = true
+				return !hasError
+			}
+			tableObject.Object[tdIndex-1-trIndex/2%2][trIndex/2-1] = lesson
 			return true
 		})
-		return true
+		return !hasError
 	})
+
+	if hasError {
+		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	if resultCount == 0 {
+		StdOutUnit.Error(username, "课表数据为空", nil)
+		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "课表数据为空")
+	}
+
 	for dayIndex, day := range tableObject.Object {
 		for classIndex, class := range day {
 			if class.Data != nil {
@@ -277,12 +290,6 @@ parse:
 				Data: []TableManager.LessonSingleItem{},
 			}
 		}
-	}
-	if hasError {
-		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-	} else if resultCount == 0 {
-		StdOutUnit.Error(username, "课表数据为空", nil)
-		return TableManager.TableObject{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
 	}
 	TableManager.Update(username, info, year, semester, tableId, tableObject)
 	return tableObject, StdOutUnit.GetEmptyErrorMessage()

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/manager/SessionManager"
 	"SCITEduTool/unit/RSAStaticUnit"
 	"SCITEduTool/unit/StdOutUnit"
@@ -84,17 +83,17 @@ func Build(username string, password string) (Token, StdOutUnit.MessagedError) {
 	token.AccessToken += header + "."
 
 	passwordPre := password
-	if !LocalDebug.IsDebug() {
-		var err StdOutUnit.MessagedError
-		passwordPre, err = RSAStaticUnit.DecodePublicEncode(passwordPre)
-		if err.HasInfo {
-			return Token{}, err
-		}
-		if len(passwordPre) <= 8 {
-			return Token{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-		passwordPre = passwordPre[8:]
+	//IF DEBUG
+	var err StdOutUnit.MessagedError
+	passwordPre, err = RSAStaticUnit.DecodePublicEncode(passwordPre)
+	if err.HasInfo {
+		return Token{}, err
 	}
+	if len(passwordPre) <= 8 {
+		return Token{}, StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	passwordPre = passwordPre[8:]
+	//ENDIF
 
 	accessBodyPre, _ := json.Marshal(TokenBody{
 		Password: passwordPre,
@@ -150,16 +149,18 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 	if errMessage.HasInfo {
 		return "", errMessage
 	}
-	if !LocalDebug.IsDebug() {
-		password, errMessage = RSAStaticUnit.DecodePublicEncode(password)
-		if errMessage.HasInfo {
-			return "", errMessage
-		}
-		if len(password) <= 8 {
-			return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
-		}
-		password = password[8:]
+
+	//IF DEBUG
+	password, errMessage = RSAStaticUnit.DecodePublicEncode(password)
+	if errMessage.HasInfo {
+		return "", errMessage
 	}
+	if len(password) <= 8 {
+		return "", StdOutUnit.GetErrorMessage(-500, "请求处理出错")
+	}
+	password = password[8:]
+	//ENDIF
+
 	if password == "" {
 		return "", StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}
@@ -182,6 +183,7 @@ func Check(token Token) (string, StdOutUnit.MessagedError) {
 	})
 	accessBody := getMD5(accessBodyPre)
 	if accessBody != accessPre[0] {
+		//StdOutUnit.Debug(username, "password: " + password, nil)
 		StdOutUnit.Info("", "access_token body无效")
 		return username, StdOutUnit.GetErrorMessage(-403, "令牌无效")
 	}

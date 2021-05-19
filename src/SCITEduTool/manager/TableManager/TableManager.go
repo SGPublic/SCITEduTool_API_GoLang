@@ -22,7 +22,7 @@ type LessonItem struct {
 }
 
 type TableObject struct {
-	Object [6][5]LessonItem `json:"table"`
+	Object [7][5]LessonItem `json:"table"`
 }
 
 type TableContent struct {

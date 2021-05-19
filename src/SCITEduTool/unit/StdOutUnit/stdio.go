@@ -35,9 +35,9 @@ func outInTerminal(username string, prefix string, str string, flag int, calldep
 }
 
 func outInFile(username string, prefix string, str string, flag int, calldepth int) {
-	if LocalDebug.IsDebug() {
-		return
-	}
+	//IF DEBUG
+	//	return
+	//ENDIF
 	exist, path := LocalDebug.CheckLogDir()
 	if !exist {
 		return
@@ -60,17 +60,17 @@ func doOut(writer io.Writer, prefix string, str string, flag int, calldepth int)
 }
 
 func Verbose(username string, str string) {
-	if !LocalDebug.IsDebug() {
-		return
-	}
+	//IF DEBUG
+	//	return
+	//ENDIF
 	outInTerminal(username, "\x1B[1;37;1m[Verbose] ", str, log.Ldate|log.Ltime, 4)
 	outInFile(username, "[Verbose] ", str, log.Ltime, 4)
 }
 
 func Debug(username string, str string, err error) {
-	if !LocalDebug.IsDebug() {
-		return
-	}
+	//IF DEBUG
+	//	return
+	//ENDIF
 	if err != nil {
 		str += "，信息：" + err.Error()
 	}

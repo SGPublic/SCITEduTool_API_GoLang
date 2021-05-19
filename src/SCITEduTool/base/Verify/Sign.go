@@ -1,7 +1,6 @@
 package Verify
 
 import (
-	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/manager/SignManager"
 	"SCITEduTool/unit/StdOutUnit"
 	"crypto/md5"
@@ -10,9 +9,9 @@ import (
 )
 
 func VerificationSign(parameter map[string]string) (bool, StdOutUnit.MessagedError) {
-	if LocalDebug.IsDebug() {
-		return true, StdOutUnit.GetEmptyErrorMessage()
-	}
+	//IF DEBUG
+	//	return true, StdOutUnit.GetEmptyErrorMessage()
+	//ENDIF
 	parString := ""
 	var parameterKeys []string
 	for key := range parameter {

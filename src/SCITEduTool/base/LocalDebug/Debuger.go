@@ -4,17 +4,16 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 )
 
-func IsDebug() bool {
-	path, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		return false
-	}
-	return strings.Contains(path, "Documents")
-}
+//func IsDebug() bool {
+//	path, err := filepath.Abs(filepath.Dir(os.Args[0]))
+//	if err != nil {
+//		return false
+//	}
+//	return strings.Contains(path, "Documents")
+//}
 
 func CheckLogDir() (bool, string) {
 	path, err := getLogDir()

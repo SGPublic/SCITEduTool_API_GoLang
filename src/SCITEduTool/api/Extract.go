@@ -1,7 +1,6 @@
 package api
 
 import (
-	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/consts"
 	"SCITEduTool/module/AchieveModule"
 	"SCITEduTool/module/InfoModule"
@@ -14,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 )
 
 func Extract(w http.ResponseWriter, r *http.Request) {
@@ -131,9 +129,9 @@ func ExtractDone(w http.ResponseWriter, r *http.Request) {
 		base.OnStandardMessage(-500, "请求处理失败")
 	}
 	extractPath += "/achieve/extract/" + strconv.Itoa(taskId) + "/" + username + "/"
-	if LocalDebug.IsDebug() {
-		extractPath = strings.ReplaceAll(extractPath, "/", "\\")
-	}
+	//IF DEBUG
+	//	extractPath = strings.ReplaceAll(extractPath, "/", "\\")
+	//ENDIF
 	_, err = os.Stat(extractPath + "extract_" + strconv.Itoa(taskId) + ".zip.prepare")
 	if err == nil {
 		base.OnStandardMessage(201, "处理中，请稍后再试")
@@ -201,9 +199,9 @@ func ExtractDownload(w http.ResponseWriter, r *http.Request) {
 		base.OnStandardMessage(-500, "请求处理失败")
 	}
 	extractPath += "/achieve/extract/" + strconv.Itoa(taskId) + "/" + username + "/"
-	if LocalDebug.IsDebug() {
-		extractPath = strings.ReplaceAll(extractPath, "/", "\\")
-	}
+	//IF DEBUG
+	//	extractPath = strings.ReplaceAll(extractPath, "/", "\\")
+	//ENDIF
 	_, err = os.Stat(extractPath + "extract_" + strconv.Itoa(taskId) + ".zip")
 	if err != nil {
 		base.OnStandardMessage(-500, "请求处理失败")

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"SCITEduTool/base/LocalDebug"
 	"SCITEduTool/base/Verify"
 	"SCITEduTool/unit/StdOutUnit"
 	"net/http"
@@ -26,16 +25,16 @@ func SetupAPI(w http.ResponseWriter, r *http.Request, parameterGet map[string]st
 		return BaseAPI{}, StdOutUnit.GetErrorMessage(-403, "服务签名错误")
 	}
 	ts, intError := strconv.ParseInt(parameter["ts"], 10, 64)
-	if !LocalDebug.IsDebug() {
-		if intError != nil {
-			StdOutUnit.Error("", "ts参数解析失败", intError)
-			return BaseAPI{}, StdOutUnit.GetErrorMessage(-403, "请求错误")
-		}
-		timeNow := time.Now().Unix() - ts
-		if timeNow > 600 || timeNow < -30 {
-			return BaseAPI{}, StdOutUnit.GetErrorMessage(-408, "请求超时")
-		}
+	//IF !DEBUG
+	if intError != nil {
+		StdOutUnit.Error("", "ts参数解析失败", intError)
+		return BaseAPI{}, StdOutUnit.GetErrorMessage(-403, "请求错误")
 	}
+	timeNow := time.Now().Unix() - ts
+	if timeNow > 600 || timeNow < -30 {
+		return BaseAPI{}, StdOutUnit.GetErrorMessage(-408, "请求超时")
+	}
+	//ENDIF
 	return BaseAPI{
 		OnObjectResult: func(object interface{}) {
 			StdOutUnit.OnObjectResult(w, object)
