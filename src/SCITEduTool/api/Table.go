@@ -46,7 +46,7 @@ func Table(w http.ResponseWriter, r *http.Request) {
 	base.OnObjectResult(struct {
 		Code    int                           `json:"code"`
 		Message string                        `json:"message"`
-		Table   [6][5]TableManager.LessonItem `json:"table"`
+		Table   [7][5]TableManager.LessonItem `json:"table"`
 	}{
 		Code:    200,
 		Message: "success.",
