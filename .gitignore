@@ -2,3 +2,7 @@
 /pkg
 /.idea/runConfigurations/Test_for_Windows.xml
 /src/test
+/src/github.com
+/src/golang.org
+/src/gopkg.in
+/.idea
