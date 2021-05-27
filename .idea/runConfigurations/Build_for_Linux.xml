@@ -9,7 +9,7 @@
     </envs>
     <kind value="PACKAGE" />
     <filePath value="$PROJECT_DIR$" />
-    <package value="main" />
+    <package value="SCITEduTool" />
     <directory value="$PROJECT_DIR$" />
     <output_directory value="$PROJECT_DIR$/bin" />
     <option name="run" value="false" />
